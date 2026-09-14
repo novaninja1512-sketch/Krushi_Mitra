@@ -1,0 +1,6 @@
+{
+  "name": "Krushi-Mitra",
+  "description": "Practical farm-management application for farmer and family: crops, plots, workers, attendance, transactions, expenses, tasks, and yield records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

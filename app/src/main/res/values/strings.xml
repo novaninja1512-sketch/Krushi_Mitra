@@ -1,0 +1,189 @@
+<resources>
+    <string name="app_name">Krushi-Mitra</string>
+    <string name="app_name_marathi">कृषी-मित्र</string>
+    <string name="app_tagline">Farm Management for Farmers</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_plots">Plots</string>
+    <string name="nav_crops">Crops</string>
+    <string name="nav_workers">Workers</string>
+    <string name="nav_attendance">Attendance</string>
+    <string name="nav_payments">Payments</string>
+    <string name="nav_expenses">Expenses</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_yield">Yield</string>
+
+    <!-- General Actions -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add">Add</string>
+    <string name="action_view_all">View All</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_search">Search</string>
+    <string name="action_confirm">Confirm</string>
+
+    <!-- Home Dashboard -->
+    <string name="dashboard_title">Farm Overview</string>
+    <string name="dashboard_attention_title">Needs Attention</string>
+    <string name="dashboard_today_tasks">Today\'s Tasks</string>
+    <string name="dashboard_upcoming_harvests">Upcoming Harvests</string>
+    <string name="dashboard_recent_expenses">Recent Expenses</string>
+    <string name="dashboard_recent_payments">Recent Worker Payments</string>
+    <string name="dashboard_active_plots">Active Plots</string>
+    <string name="dashboard_active_crops">Active Crops</string>
+    <string name="dashboard_workers_count">Workers</string>
+    <string name="dashboard_no_tasks_today">No tasks scheduled for today</string>
+    <string name="dashboard_no_upcoming_harvests">No upcoming harvests in next 30 days</string>
+    <string name="dashboard_quick_record">Quick Record</string>
+
+    <!-- Plots -->
+    <string name="plots_title">Farm Plots</string>
+    <string name="plot_add">Add Plot</string>
+    <string name="plot_edit">Edit Plot</string>
+    <string name="plot_detail">Plot Details</string>
+    <string name="plot_name">Plot Name</string>
+    <string name="plot_area">Area</string>
+    <string name="plot_area_unit">Area Unit</string>
+    <string name="plot_soil_type">Soil Type</string>
+    <string name="plot_irrigation_type">Irrigation Type</string>
+    <string name="plot_notes">Notes (Optional)</string>
+    <string name="plot_archived_tag">Archived</string>
+    <string name="plot_active_tag">Active</string>
+    <string name="plot_show_archived">Show Archived Plots</string>
+    <string name="plot_empty">No farm plots added yet. Tap + to add your first plot.</string>
+    <string name="plot_crops_section">Associated Crops</string>
+    <string name="plot_tasks_section">Recent Tasks</string>
+    <string name="plot_expenses_section">Plot Expenses</string>
+    <string name="plot_yield_section">Plot Harvest Records</string>
+
+    <!-- Crops -->
+    <string name="crops_title">Crop Management</string>
+    <string name="crop_add">Add Crop Assignment</string>
+    <string name="crop_edit">Edit Crop Assignment</string>
+    <string name="crop_name">Crop Name</string>
+    <string name="crop_variety">Variety / Type</string>
+    <string name="crop_select_plot">Select Plot</string>
+    <string name="crop_planting_date">Planting Date</string>
+    <string name="crop_expected_harvest">Expected Harvest Date</string>
+    <string name="crop_status">Status</string>
+    <string name="crop_perennial">Perennial Crop (e.g. Sugarcane, Fruit Orchard)</string>
+    <string name="crop_status_planned">PLANNED</string>
+    <string name="crop_status_active">ACTIVE</string>
+    <string name="crop_status_harvested">HARVESTED</string>
+    <string name="crop_empty">No crop assignments found. Add your first crop.</string>
+    <string name="crop_days_to_harvest">%d days to expected harvest</string>
+    <string name="crop_harvest_overdue">Harvest date passed</string>
+    <string name="crop_harvest_today">Expected harvest today</string>
+
+    <!-- Workers -->
+    <string name="workers_title">Worker Management</string>
+    <string name="worker_add">Add Worker</string>
+    <string name="worker_edit">Edit Worker</string>
+    <string name="worker_detail">Worker Details</string>
+    <string name="worker_name">Full Name</string>
+    <string name="worker_mobile">Mobile Number (Optional)</string>
+    <string name="worker_daily_wage">Daily Wage Rate (₹)</string>
+    <string name="worker_joining_date">Joining Date</string>
+    <string name="worker_notes">Notes (Optional)</string>
+    <string name="worker_empty">No workers registered yet. Tap + to register a worker.</string>
+    <string name="worker_attendance_summary">Attendance Summary</string>
+    <string name="worker_present_days">Present: %d days</string>
+    <string name="worker_half_days">Half Days: %d</string>
+    <string name="worker_absent_days">Absent: %d days</string>
+    <string name="worker_total_advance">Total Advance Paid: ₹%.2f</string>
+    <string name="worker_total_salary">Total Salary Paid: ₹%.2f</string>
+    <string name="worker_assigned_tasks">Assigned Tasks</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">Worker Attendance</string>
+    <string name="attendance_date">Attendance Date</string>
+    <string name="attendance_mark_all_present">Mark All Present</string>
+    <string name="attendance_present">Present</string>
+    <string name="attendance_half_day">Half Day</string>
+    <string name="attendance_absent">Absent</string>
+    <string name="attendance_no_workers">No active workers found to mark attendance.</string>
+    <string name="attendance_summary_banner">%1$d Present • %2$d Half Day • %3$d Absent</string>
+    <string name="attendance_saved_auto">Attendance saved automatically</string>
+
+    <!-- Payments -->
+    <string name="payments_title">Worker Payments</string>
+    <string name="payment_record">Record Payment</string>
+    <string name="payment_type">Transaction Type</string>
+    <string name="payment_type_advance">Advance</string>
+    <string name="payment_type_salary">Salary</string>
+    <string name="payment_worker">Select Worker</string>
+    <string name="payment_amount">Amount (₹)</string>
+    <string name="payment_date">Payment Date</string>
+    <string name="payment_notes">Notes / Purpose (Optional)</string>
+    <string name="payment_total_advance">Total Advances: ₹%.2f</string>
+    <string name="payment_total_salary">Total Salaries: ₹%.2f</string>
+    <string name="payments_empty">No payments recorded yet.</string>
+
+    <!-- Expenses -->
+    <string name="expenses_title">Farm Expenses</string>
+    <string name="expense_record">Record Expense</string>
+    <string name="expense_category">Category</string>
+    <string name="expense_amount">Amount (₹)</string>
+    <string name="expense_date">Date</string>
+    <string name="expense_description">Description / Item Details</string>
+    <string name="expense_plot">Associated Plot (Optional)</string>
+    <string name="expense_no_plot">General Farm (No specific plot)</string>
+    <string name="expense_total">Total Expenses: ₹%.2f</string>
+    <string name="expenses_empty">No expenses recorded yet.</string>
+    <string name="expense_all_categories">All Categories</string>
+
+    <!-- Tasks -->
+    <string name="tasks_title">Farm Tasks</string>
+    <string name="task_add">Add Task</string>
+    <string name="task_edit">Edit Task</string>
+    <string name="task_type">Task Type</string>
+    <string name="task_description">Description</string>
+    <string name="task_date">Task Date</string>
+    <string name="task_duration">Duration (Hours)</string>
+    <string name="task_plot">Plot (Optional)</string>
+    <string name="task_workers">Assign Workers</string>
+    <string name="task_notes">Notes (Optional)</string>
+    <string name="task_status_pending">Pending</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="tasks_empty">No tasks found. Tap + to schedule farm work.</string>
+
+    <!-- Yield / Harvest -->
+    <string name="yield_title">Crop Yield &amp; Harvest</string>
+    <string name="yield_record">Record Harvest</string>
+    <string name="yield_crop">Crop Assignment</string>
+    <string name="yield_date">Harvest Date</string>
+    <string name="yield_quantity">Quantity Harvested</string>
+    <string name="yield_unit">Unit</string>
+    <string name="yield_rate">Rate Per Unit (₹)</string>
+    <string name="yield_revenue">Total Revenue (₹)</string>
+    <string name="yield_notes">Notes / Buyer / Mandi (Optional)</string>
+    <string name="yield_empty">No harvest records yet.</string>
+    <string name="yield_summary">Total Revenue: ₹%.2f</string>
+    <string name="yield_calc_hint">Calculated: Quantity × Rate</string>
+
+    <!-- Validation Errors -->
+    <string name="attendance_status_present">Present</string>
+    <string name="attendance_status_half_day">Half Day</string>
+    <string name="attendance_status_absent">Absent</string>
+    <string name="expense_add">Add Expense</string>
+    <string name="expense_empty">No expenses recorded yet.</string>
+    <string name="payment_empty">No payments recorded yet.</string>
+    <string name="payment_select_worker">Select Worker</string>
+    <string name="task_empty">No tasks found. Tap + to schedule farm work.</string>
+    <string name="task_duration_hours">Duration in Hours (Optional)</string>
+    <string name="worker_attendance_history">Attendance History</string>
+    <string name="worker_payment_history">Payment History</string>
+    <string name="worker_show_archived">Show Archived Workers</string>
+    <string name="yield_total_revenue">Total Revenue (₹)</string>
+
+    <string name="err_required_field">This field is required</string>
+    <string name="err_invalid_number">Please enter a valid positive number</string>
+    <string name="err_select_worker">Please select a worker</string>
+    <string name="err_select_plot">Please select a plot</string>
+    <string name="err_select_crop">Please select a crop</string>
+    <string name="err_invalid_date">Please enter a valid date</string>
+    <string name="err_generic">Something went wrong. Please check inputs and try again.</string>
+</resources>
