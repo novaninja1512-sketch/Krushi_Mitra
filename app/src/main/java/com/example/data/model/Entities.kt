@@ -108,7 +108,7 @@ data class Worker(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val name: String,
     val mobileNumber: String = "",
-    val dailyWageRate: Double = 0.0,
+    val dailyWageRate: Long = 0L, // In paise (e.g. 45000L = ₹450.00)
     val joiningDate: String = "",
     val notes: String = "",
     val archived: Boolean = false,
@@ -171,7 +171,7 @@ data class WorkerTransaction(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val workerId: String,
     val type: String, // ADVANCE, SALARY
-    val amount: Double,
+    val amount: Long, // In paise (e.g. 125050L = ₹1,250.50)
     val date: String, // YYYY-MM-DD
     val notes: String = "",
     val userId: String? = null,
@@ -262,10 +262,10 @@ data class YieldRecord(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val cropAssignmentId: String,
     val date: String, // YYYY-MM-DD
-    val quantity: Double,
+    val quantity: Double, // Physical quantity measurement (kg, quintal, etc.)
     val unit: String = "kg",
-    val ratePerUnit: Double = 0.0,
-    val totalRevenue: Double = 0.0,
+    val ratePerUnit: Long = 0L, // In paise per unit (e.g. 2550L = ₹25.50)
+    val totalRevenue: Long = 0L, // In paise (e.g. 256275L = ₹2,562.75)
     val notes: String = "",
     val userId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
@@ -366,7 +366,7 @@ data class Expense(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val date: String, // YYYY-MM-DD
     val category: String,
-    val amount: Double,
+    val amount: Long, // In paise (e.g. 350000L = ₹3,500.00)
     val description: String,
     val plotId: String? = null,
     val userId: String? = null,

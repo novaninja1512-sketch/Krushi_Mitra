@@ -10,6 +10,7 @@ import com.example.data.model.TaskWorkerAssignment
 import com.example.data.model.Worker
 import com.example.data.model.WorkerTransaction
 import com.example.data.model.YieldRecord
+import com.example.util.CurrencyUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,7 +58,7 @@ fun Worker.toRemote(userId: String): WorkerRemote = WorkerRemote(
     userId = userId,
     name = name,
     mobileNumber = mobileNumber,
-    dailyWageRate = dailyWageRate,
+    dailyWageRate = CurrencyUtils.paiseToRupees(dailyWageRate),
     joiningDate = joiningDate,
     notes = notes,
     archived = archived,
@@ -70,7 +71,7 @@ fun WorkerRemote.toEntity(): Worker = Worker(
     id = id,
     name = name,
     mobileNumber = mobileNumber,
-    dailyWageRate = dailyWageRate,
+    dailyWageRate = CurrencyUtils.rupeesToPaise(dailyWageRate),
     joiningDate = joiningDate,
     notes = notes,
     archived = archived,
@@ -109,7 +110,7 @@ fun WorkerTransaction.toRemote(userId: String): WorkerTransactionRemote = Worker
     userId = userId,
     workerId = workerId,
     type = type,
-    amount = amount,
+    amount = CurrencyUtils.paiseToRupees(amount),
     date = date,
     notes = notes,
     createdAt = TimeUtils.toIso(createdAt),
@@ -121,7 +122,7 @@ fun WorkerTransactionRemote.toEntity(): WorkerTransaction = WorkerTransaction(
     id = id,
     workerId = workerId,
     type = type,
-    amount = amount,
+    amount = CurrencyUtils.rupeesToPaise(amount),
     date = date,
     notes = notes,
     userId = userId,
@@ -203,8 +204,8 @@ fun YieldRecord.toRemote(userId: String): YieldRecordRemote = YieldRecordRemote(
     date = date,
     quantity = quantity,
     unit = unit,
-    ratePerUnit = ratePerUnit,
-    totalRevenue = totalRevenue,
+    ratePerUnit = CurrencyUtils.paiseToRupees(ratePerUnit),
+    totalRevenue = CurrencyUtils.paiseToRupees(totalRevenue),
     notes = notes,
     createdAt = TimeUtils.toIso(createdAt),
     updatedAt = TimeUtils.toIso(updatedAt),
@@ -217,8 +218,8 @@ fun YieldRecordRemote.toEntity(): YieldRecord = YieldRecord(
     date = date,
     quantity = quantity,
     unit = unit,
-    ratePerUnit = ratePerUnit,
-    totalRevenue = totalRevenue,
+    ratePerUnit = CurrencyUtils.rupeesToPaise(ratePerUnit),
+    totalRevenue = CurrencyUtils.rupeesToPaise(totalRevenue),
     notes = notes,
     userId = userId,
     createdAt = TimeUtils.toEpoch(createdAt) ?: System.currentTimeMillis(),
@@ -285,7 +286,7 @@ fun Expense.toRemote(userId: String): ExpenseRemote = ExpenseRemote(
     userId = userId,
     date = date,
     category = category,
-    amount = amount,
+    amount = CurrencyUtils.paiseToRupees(amount),
     description = description,
     plotId = plotId,
     createdAt = TimeUtils.toIso(createdAt),
@@ -297,7 +298,7 @@ fun ExpenseRemote.toEntity(): Expense = Expense(
     id = id,
     date = date,
     category = category,
-    amount = amount,
+    amount = CurrencyUtils.rupeesToPaise(amount),
     description = description,
     plotId = plotId,
     userId = userId,

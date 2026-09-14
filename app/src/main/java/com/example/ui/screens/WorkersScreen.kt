@@ -288,7 +288,7 @@ fun WorkerFormDialog(
 ) {
     var name by remember { mutableStateOf(worker?.name ?: "") }
     var mobile by remember { mutableStateOf(worker?.mobileNumber ?: "") }
-    var wageText by remember { mutableStateOf(worker?.dailyWageRate?.let { DateUtils.formatNumber(it) } ?: "350") }
+    var wageText by remember { mutableStateOf(worker?.dailyWageRate?.let { DateUtils.formatPaiseToRupeesString(it) } ?: "350") }
     var joiningDate by remember { mutableStateOf(worker?.joiningDate ?: DateUtils.today()) }
     var notes by remember { mutableStateOf(worker?.notes ?: "") }
 

@@ -58,11 +58,19 @@ object DateUtils {
         return String.format(Locale.getDefault(), "₹%.2f", amount)
     }
 
+    fun formatCurrency(paise: Long): String {
+        return CurrencyUtils.formatPaise(paise)
+    }
+
     fun formatNumber(number: Double): String {
         return if (number % 1.0 == 0.0) {
             number.toInt().toString()
         } else {
             String.format(Locale.getDefault(), "%.2f", number)
         }
+    }
+
+    fun formatPaiseToRupeesString(paise: Long): String {
+        return CurrencyUtils.formatPaiseForInput(paise)
     }
 }

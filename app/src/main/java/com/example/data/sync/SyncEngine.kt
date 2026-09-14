@@ -142,8 +142,8 @@ class SyncEngine(
     suspend fun performSync(): Result<Unit> = withContext(Dispatchers.IO) {
         syncMutex.withLock {
             val user = authRepository.currentUser.value
-            if (user == null) {
-                Log.d(TAG, "User not authenticated. Sync skipped.")
+            if (user == null || !authRepository.isSessionValid()) {
+                Log.d(TAG, "User not authenticated or session is invalid. Sync skipped.")
                 return@withContext Result.success(Unit)
             }
 
@@ -179,7 +179,7 @@ class SyncEngine(
                 uploadTaskWorkers(client, syncDao, userId)
                 uploadExpenses(client, syncDao, userId)
 
-                // 3. DOWNLOAD / PULL PHASE (Fetch cloud changes and merge via Last-Write-Wins)
+                // 3. DOWNLOAD / PULL PHASE (Fetch cloud changes and merge via Last-Write-Wins with deterministic tombstone handling)
                 pullPlots(client, syncDao, userId)
                 pullCrops(client, syncDao, userId)
                 pullYieldRecords(client, syncDao, userId)
@@ -203,10 +203,49 @@ class SyncEngine(
         }
     }
 
+    // --- CONFLICT RESOLUTION & TOMBSTONE MERGING LOGIC ---
+    /**
+     * Determines whether an incoming remote entity should overwrite local entity state.
+     * Rules:
+     * 1. A stale remote copy must NEVER overwrite or resurrect a local tombstone.
+     * 2. A remote tombstone MUST be applied locally to delete local records.
+     * 3. Local pending changes take precedence over older remote updates.
+     * 4. Otherwise, remote changes are applied if remote timestamp >= local timestamp.
+     */
+    fun shouldApplyRemote(
+        localDeletedAt: Long?,
+        localUpdatedAt: Long,
+        localSyncStatus: String,
+        remoteDeletedAt: String?,
+        remoteUpdatedAt: String?
+    ): Boolean {
+        val remoteEpoch = TimeUtils.toEpoch(remoteUpdatedAt) ?: 0L
+        val remoteIsDeleted = !remoteDeletedAt.isNullOrBlank()
+        val localIsDeleted = localDeletedAt != null
+
+        // Rule 1: Stale remote copy must NOT overwrite a local tombstone
+        if (localIsDeleted && !remoteIsDeleted) {
+            return false
+        }
+
+        // Rule 2: Remote tombstone takes precedence over local active record
+        if (remoteIsDeleted && !localIsDeleted) {
+            return true
+        }
+
+        // Rule 3: Local pending un-synced changes newer than remote take precedence
+        if (localSyncStatus == SyncStatus.PENDING && localUpdatedAt > remoteEpoch) {
+            return false
+        }
+
+        // Rule 4: Otherwise apply remote
+        return true
+    }
+
     // --- UPLOAD METHODS ---
 
     private suspend fun uploadPlots(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingPlots()
+        val pending = syncDao.getPendingPlots(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("plots").upsert(remoteList)
@@ -214,7 +253,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadCrops(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingCrops()
+        val pending = syncDao.getPendingCrops(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("crop_assignments").upsert(remoteList)
@@ -222,7 +261,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadYieldRecords(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingYields()
+        val pending = syncDao.getPendingYields(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("yield_records").upsert(remoteList)
@@ -230,7 +269,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingWorkers()
+        val pending = syncDao.getPendingWorkers(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("workers").upsert(remoteList)
@@ -238,7 +277,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadAttendance(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingAttendance()
+        val pending = syncDao.getPendingAttendance(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("attendance").upsert(remoteList)
@@ -248,7 +287,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadTransactions(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingTransactions()
+        val pending = syncDao.getPendingTransactions(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("worker_transactions").upsert(remoteList)
@@ -256,7 +295,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadDailyTasks(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingTasks()
+        val pending = syncDao.getPendingTasks(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("daily_tasks").upsert(remoteList)
@@ -264,7 +303,7 @@ class SyncEngine(
     }
 
     private suspend fun uploadTaskWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingTaskWorkers()
+        val pending = syncDao.getPendingTaskWorkers(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("task_worker_assignments").upsert(remoteList)
@@ -274,14 +313,14 @@ class SyncEngine(
     }
 
     private suspend fun uploadExpenses(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
-        val pending = syncDao.getPendingExpenses()
+        val pending = syncDao.getPendingExpenses(userId)
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("expenses").upsert(remoteList)
         syncDao.markExpensesSynced(pending.map { it.id })
     }
 
-    // --- PULL / DOWNLOAD METHODS (Last-Write-Wins based on updatedAt) ---
+    // --- PULL / DOWNLOAD METHODS (Last-Write-Wins with safe Tombstone handling) ---
 
     private suspend fun pullPlots(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
         val remotePlots = client.from("plots")
@@ -294,8 +333,7 @@ class SyncEngine(
 
         for (remote in remotePlots) {
             val local = syncDao.getPlotById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertPlot(remote.toEntity())
             }
         }
@@ -312,8 +350,7 @@ class SyncEngine(
 
         for (remote in remoteCrops) {
             val local = syncDao.getCropById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertCrop(remote.toEntity())
             }
         }
@@ -330,8 +367,7 @@ class SyncEngine(
 
         for (remote in remoteYields) {
             val local = syncDao.getYieldById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertYield(remote.toEntity())
             }
         }
@@ -348,8 +384,7 @@ class SyncEngine(
 
         for (remote in remoteWorkers) {
             val local = syncDao.getWorkerById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertWorker(remote.toEntity())
             }
         }
@@ -366,8 +401,7 @@ class SyncEngine(
 
         for (remote in remoteAttendance) {
             val local = syncDao.getAttendance(remote.workerId, remote.date)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertAttendance(remote.toEntity())
             }
         }
@@ -384,8 +418,7 @@ class SyncEngine(
 
         for (remote in remoteTransactions) {
             val local = syncDao.getTransactionById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertTransaction(remote.toEntity())
             }
         }
@@ -402,8 +435,7 @@ class SyncEngine(
 
         for (remote in remoteTasks) {
             val local = syncDao.getTaskById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertTask(remote.toEntity())
             }
         }
@@ -419,7 +451,10 @@ class SyncEngine(
             .decodeList<TaskWorkerAssignmentRemote>()
 
         for (remote in remoteTaskWorkers) {
-            syncDao.upsertTaskWorker(remote.toEntity())
+            val local = syncDao.getTaskWorker(remote.taskId, remote.workerId)
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
+                syncDao.upsertTaskWorker(remote.toEntity())
+            }
         }
     }
 
@@ -434,8 +469,7 @@ class SyncEngine(
 
         for (remote in remoteExpenses) {
             val local = syncDao.getExpenseById(remote.id)
-            val remoteUpdated = TimeUtils.toEpoch(remote.updatedAt) ?: 0L
-            if (local == null || local.syncStatus != SyncStatus.PENDING || remoteUpdated >= local.updatedAt) {
+            if (local == null || shouldApplyRemote(local.deletedAt, local.updatedAt, local.syncStatus, remote.deletedAt, remote.updatedAt)) {
                 syncDao.upsertExpense(remote.toEntity())
             }
         }

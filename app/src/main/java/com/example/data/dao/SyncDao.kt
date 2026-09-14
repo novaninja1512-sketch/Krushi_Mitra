@@ -20,34 +20,34 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SyncDao {
 
-    // --- 1. Pending Local Changes Retrieval (for cloud upload) ---
+    // --- 1. Pending Local Changes Retrieval (for cloud upload, strictly scoped by user) ---
 
-    @Query("SELECT * FROM plots WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingPlots(pendingStatus: String = SyncStatus.PENDING): List<Plot>
+    @Query("SELECT * FROM plots WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingPlots(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Plot>
 
-    @Query("SELECT * FROM crop_assignments WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingCrops(pendingStatus: String = SyncStatus.PENDING): List<CropAssignment>
+    @Query("SELECT * FROM crop_assignments WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingCrops(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<CropAssignment>
 
-    @Query("SELECT * FROM yield_records WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingYields(pendingStatus: String = SyncStatus.PENDING): List<YieldRecord>
+    @Query("SELECT * FROM yield_records WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingYields(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<YieldRecord>
 
-    @Query("SELECT * FROM workers WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingWorkers(pendingStatus: String = SyncStatus.PENDING): List<Worker>
+    @Query("SELECT * FROM workers WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingWorkers(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Worker>
 
-    @Query("SELECT * FROM attendance WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingAttendance(pendingStatus: String = SyncStatus.PENDING): List<Attendance>
+    @Query("SELECT * FROM attendance WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingAttendance(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Attendance>
 
-    @Query("SELECT * FROM worker_transactions WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingTransactions(pendingStatus: String = SyncStatus.PENDING): List<WorkerTransaction>
+    @Query("SELECT * FROM worker_transactions WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingTransactions(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<WorkerTransaction>
 
-    @Query("SELECT * FROM daily_tasks WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingTasks(pendingStatus: String = SyncStatus.PENDING): List<DailyTask>
+    @Query("SELECT * FROM daily_tasks WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingTasks(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<DailyTask>
 
-    @Query("SELECT * FROM task_worker_assignments WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingTaskWorkers(pendingStatus: String = SyncStatus.PENDING): List<TaskWorkerAssignment>
+    @Query("SELECT * FROM task_worker_assignments WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingTaskWorkers(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<TaskWorkerAssignment>
 
-    @Query("SELECT * FROM expenses WHERE syncStatus = :pendingStatus")
-    suspend fun getPendingExpenses(pendingStatus: String = SyncStatus.PENDING): List<Expense>
+    @Query("SELECT * FROM expenses WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
+    suspend fun getPendingExpenses(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Expense>
 
     // --- 2. Mark Synced After Upload ---
 
@@ -170,6 +170,9 @@ interface SyncDao {
 
     @Query("SELECT * FROM daily_tasks WHERE id = :id LIMIT 1")
     suspend fun getTaskById(id: String): DailyTask?
+
+    @Query("SELECT * FROM task_worker_assignments WHERE taskId = :taskId AND workerId = :workerId LIMIT 1")
+    suspend fun getTaskWorker(taskId: String, workerId: String): TaskWorkerAssignment?
 
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     suspend fun getExpenseById(id: String): Expense?

@@ -19,6 +19,7 @@ import com.example.data.model.WorkerTransaction
 import com.example.data.model.YieldRecord
 import com.example.data.model.YieldWithCrop
 import com.example.data.repository.FarmRepository
+import com.example.util.CurrencyUtils
 import com.example.util.DateUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -374,11 +375,12 @@ class FarmViewModel(
                     _userMessage.emit("Wage rate cannot be negative")
                     return@launch
                 }
+                val dailyWageRatePaise = CurrencyUtils.rupeesToPaise(dailyWageRate)
                 val worker = Worker(
                     id = id ?: UUID.randomUUID().toString(),
                     name = trimmedName,
                     mobileNumber = mobileNumber.trim(),
-                    dailyWageRate = dailyWageRate,
+                    dailyWageRate = dailyWageRatePaise,
                     joiningDate = joiningDate.ifEmpty { DateUtils.today() },
                     notes = notes.trim()
                 )
@@ -486,16 +488,17 @@ class FarmViewModel(
                     _userMessage.emit("Amount must be greater than zero")
                     return@launch
                 }
+                val amountPaise = CurrencyUtils.rupeesToPaise(amount)
                 val transaction = WorkerTransaction(
                     id = UUID.randomUUID().toString(),
                     workerId = workerId,
                     type = type,
-                    amount = amount,
+                    amount = amountPaise,
                     date = date.ifEmpty { DateUtils.today() },
                     notes = notes.trim()
                 )
                 repository.insertTransaction(transaction)
-                _userMessage.emit("$type payment of ${DateUtils.formatCurrency(amount)} recorded")
+                _userMessage.emit("$type payment of ${DateUtils.formatCurrency(amountPaise)} recorded")
                 onSuccess()
             } catch (e: Exception) {
                 _userMessage.emit("Error recording payment: ${e.localizedMessage ?: "Unknown error"}")
@@ -536,11 +539,12 @@ class FarmViewModel(
                     _userMessage.emit("Description is required")
                     return@launch
                 }
+                val amountPaise = CurrencyUtils.rupeesToPaise(amount)
                 val expense = Expense(
                     id = id ?: UUID.randomUUID().toString(),
                     date = date.ifEmpty { DateUtils.today() },
                     category = category,
-                    amount = amount,
+                    amount = amountPaise,
                     description = description.trim(),
                     plotId = plotId?.ifEmpty { null }
                 )
@@ -660,20 +664,25 @@ class FarmViewModel(
                     _userMessage.emit("Quantity must be greater than zero")
                     return@launch
                 }
-                val calculatedRevenue = if (totalRevenue > 0.0) totalRevenue else (quantity * ratePerUnit)
+                val ratePerUnitPaise = CurrencyUtils.rupeesToPaise(ratePerUnit)
+                val totalRevenuePaise = if (totalRevenue > 0.0) {
+                    CurrencyUtils.rupeesToPaise(totalRevenue)
+                } else {
+                    CurrencyUtils.calculateRevenuePaise(quantity, ratePerUnitPaise)
+                }
                 val yieldRecord = YieldRecord(
                     id = id ?: UUID.randomUUID().toString(),
                     cropAssignmentId = cropAssignmentId,
                     date = date.ifEmpty { DateUtils.today() },
                     quantity = quantity,
                     unit = unit,
-                    ratePerUnit = ratePerUnit.coerceAtLeast(0.0),
-                    totalRevenue = calculatedRevenue.coerceAtLeast(0.0),
+                    ratePerUnit = ratePerUnitPaise.coerceAtLeast(0L),
+                    totalRevenue = totalRevenuePaise.coerceAtLeast(0L),
                     notes = notes.trim()
                 )
                 if (id == null) {
                     repository.insertYield(yieldRecord)
-                    _userMessage.emit("Harvest record saved: ${DateUtils.formatCurrency(calculatedRevenue)}")
+                    _userMessage.emit("Harvest record saved: ${DateUtils.formatCurrency(totalRevenuePaise)}")
                 } else {
                     repository.updateYield(yieldRecord)
                     _userMessage.emit("Harvest record updated")

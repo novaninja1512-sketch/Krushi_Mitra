@@ -55,11 +55,25 @@ data class WorkerDetails(
     val presentCount: Int,
     val halfDayCount: Int,
     val absentCount: Int,
-    val totalAdvance: Double,
-    val totalSalary: Double,
+    val totalAdvance: Long, // in paise
+    val totalSalary: Long,  // in paise
     val recentTransactions: List<WorkerTransaction>,
     val recentTasks: List<DailyTask>
-)
+) {
+    /**
+     * Total earned wage in paise:
+     * Full days (PRESENT) * dailyWageRate + Half days (HALF_DAY) * (dailyWageRate / 2)
+     */
+    val totalEarnedPaise: Long
+        get() = (presentCount.toLong() * worker.dailyWageRate) + (halfDayCount.toLong() * (worker.dailyWageRate / 2L))
+
+    /**
+     * Remaining worker balance in paise:
+     * totalEarnedPaise - totalAdvance - totalSalary
+     */
+    val remainingBalancePaise: Long
+        get() = totalEarnedPaise - totalAdvance - totalSalary
+}
 
 data class AttendanceSummary(
     val presentCount: Int,

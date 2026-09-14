@@ -72,7 +72,7 @@ class ExampleRobolectricTest {
         val worker = Worker(
             id = "worker-1",
             name = "Ramesh Patil",
-            dailyWageRate = 450.0
+            dailyWageRate = 45000L
         )
         db.workerDao().insertWorker(worker)
 
@@ -145,7 +145,7 @@ class ExampleRobolectricTest {
         val worker = Worker(
             id = "worker-local-1",
             name = "Suresh",
-            dailyWageRate = 500.0,
+            dailyWageRate = 50000L,
             userId = null
         )
         db.workerDao().insertWorker(worker)

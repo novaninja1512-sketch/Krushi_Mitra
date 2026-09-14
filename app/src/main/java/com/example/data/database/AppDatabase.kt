@@ -34,7 +34,7 @@ import com.example.data.model.YieldRecord
         TaskWorkerAssignment::class,
         Expense::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -60,7 +60,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "krushi_mitra_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(
+                        DatabaseMigrations.MIGRATION_1_2,
+                        DatabaseMigrations.MIGRATION_2_3
+                    )
                     .build()
                 INSTANCE = instance
                 instance

@@ -318,6 +318,29 @@ fun WorkerDetailScreen(
                     }
                 }
 
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        StatCard(
+                            title = "Total Earned",
+                            value = DateUtils.formatCurrency(details.totalEarnedPaise),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        val balanceColor = if (details.remainingBalancePaise > 0L) StatusHalfDayOrange else StatusPresentGreen
+                        StatCard(
+                            title = if (details.remainingBalancePaise >= 0L) "Balance Due" else "Advance Excess",
+                            value = DateUtils.formatCurrency(kotlin.math.abs(details.remainingBalancePaise)),
+                            containerColor = balanceColor.copy(alpha = 0.15f),
+                            contentColor = balanceColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
                 // Transactions List
                 val transactions = details.recentTransactions
                 if (transactions.isEmpty()) {

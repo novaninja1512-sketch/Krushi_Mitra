@@ -25,6 +25,12 @@ data class UserProfile(
     val avatarUrl: String? = null
 )
 
+enum class SessionVerificationState {
+    SESSION_UNKNOWN,
+    SESSION_VALID,
+    SESSION_INVALID
+}
+
 sealed interface AuthState {
     object Loading : AuthState
     data class Authenticated(val user: UserProfile) : AuthState
@@ -37,6 +43,9 @@ class AuthRepository(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val prefs: SharedPreferences = context.getSharedPreferences("krushi_auth_prefs", Context.MODE_PRIVATE)
 
+    private val _sessionState = MutableStateFlow<SessionVerificationState>(SessionVerificationState.SESSION_UNKNOWN)
+    val sessionState: StateFlow<SessionVerificationState> = _sessionState.asStateFlow()
+
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
@@ -47,27 +56,42 @@ class AuthRepository(private val context: Context) {
         initializeAuth()
     }
 
-    private fun initializeAuth() {
-        // First check cached user to prevent flashing login screen
-        val cachedId = prefs.getString("user_id", null)
-        val cachedEmail = prefs.getString("user_email", null)
+    /**
+     * Checks if there is a verified active Supabase session.
+     * Prevents sync or authenticated operations based on unverified cached profiles.
+     */
+    fun isSessionValid(): Boolean {
+        val client = SupabaseClientProvider.getClient() ?: return false
+        return _sessionState.value == SessionVerificationState.SESSION_VALID && client.auth.currentSessionOrNull() != null
+    }
+
+    fun getCachedProfileForUi(): UserProfile? {
+        val cachedId = prefs.getString("user_id", null) ?: return null
+        val cachedEmail = prefs.getString("user_email", null) ?: return null
         val cachedName = prefs.getString("user_name", null)
         val cachedAvatar = prefs.getString("user_avatar", null)
+        return UserProfile(
+            id = cachedId,
+            email = cachedEmail,
+            displayName = cachedName ?: cachedEmail.substringBefore("@"),
+            avatarUrl = cachedAvatar
+        )
+    }
 
-        if (!cachedId.isNullOrBlank() && !cachedEmail.isNullOrBlank()) {
-            val profile = UserProfile(
-                id = cachedId,
-                email = cachedEmail,
-                displayName = cachedName ?: cachedEmail.substringBefore("@"),
-                avatarUrl = cachedAvatar
-            )
-            _currentUser.value = profile
-            _authState.value = AuthState.Authenticated(profile)
-        } else {
+    private fun initializeAuth() {
+        // Startup strictly starts at Loading with SESSION_UNKNOWN.
+        // A cached profile is NEVER used to independently establish an authenticated session.
+        _authState.value = AuthState.Loading
+        _sessionState.value = SessionVerificationState.SESSION_UNKNOWN
+
+        val client = SupabaseClientProvider.getClient()
+        if (client == null || !SupabaseClientProvider.isConfigured) {
+            clearPrefs()
+            _currentUser.value = null
+            _sessionState.value = SessionVerificationState.SESSION_INVALID
             _authState.value = AuthState.Unauthenticated
+            return
         }
-
-        val client = SupabaseClientProvider.getClient() ?: return
 
         scope.launch {
             try {
@@ -90,27 +114,38 @@ class AuthRepository(private val context: Context) {
                                 )
                                 saveUserToPrefs(profile)
                                 _currentUser.value = profile
+                                _sessionState.value = SessionVerificationState.SESSION_VALID
                                 _authState.value = AuthState.Authenticated(profile)
-                            }
-                        }
-                        is SessionStatus.NotAuthenticated -> {
-                            // If user is explicitly not authenticated in Supabase, clear local session
-                            if (SupabaseClientProvider.isConfigured) {
+                            } else {
                                 clearPrefs()
                                 _currentUser.value = null
+                                _sessionState.value = SessionVerificationState.SESSION_INVALID
                                 _authState.value = AuthState.Unauthenticated
                             }
                         }
+                        is SessionStatus.NotAuthenticated -> {
+                            clearPrefs()
+                            _currentUser.value = null
+                            _sessionState.value = SessionVerificationState.SESSION_INVALID
+                            _authState.value = AuthState.Unauthenticated
+                        }
                         is SessionStatus.Initializing -> {
-                            // Keep current loading or cached state
+                            _authState.value = AuthState.Loading
+                            _sessionState.value = SessionVerificationState.SESSION_UNKNOWN
                         }
                         else -> {
-                            // RefreshFailure or other statuses
+                            // e.g. RefreshFailure / network invalidation
+                            clearPrefs()
+                            _currentUser.value = null
+                            _sessionState.value = SessionVerificationState.SESSION_INVALID
+                            _authState.value = AuthState.Unauthenticated
                         }
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error monitoring auth session: ${e.message}", e)
+                _sessionState.value = SessionVerificationState.SESSION_INVALID
+                _authState.value = AuthState.Error(e.message ?: "Authentication session error")
             }
         }
     }
@@ -150,6 +185,7 @@ class AuthRepository(private val context: Context) {
                     )
                     saveUserToPrefs(profile)
                     _currentUser.value = profile
+                    _sessionState.value = SessionVerificationState.SESSION_VALID
                     _authState.value = AuthState.Authenticated(profile)
                     scope.launch {
                         onAuthSuccess(user.id)
@@ -167,12 +203,14 @@ class AuthRepository(private val context: Context) {
             client?.auth?.signOut()
             clearPrefs()
             _currentUser.value = null
+            _sessionState.value = SessionVerificationState.SESSION_INVALID
             _authState.value = AuthState.Unauthenticated
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Sign out error: ${e.message}", e)
             clearPrefs()
             _currentUser.value = null
+            _sessionState.value = SessionVerificationState.SESSION_INVALID
             _authState.value = AuthState.Unauthenticated
             Result.success(Unit)
         }
