@@ -186,4 +186,25 @@
     <string name="err_select_crop">Please select a crop</string>
     <string name="err_invalid_date">Please enter a valid date</string>
     <string name="err_generic">Something went wrong. Please check inputs and try again.</string>
+
+    <!-- Cloud Sync & Supabase Auth -->
+    <string name="nav_cloud_sync">Cloud &amp; Account</string>
+    <string name="nav_cloud_sync_marathi">क्लाउड आणि खाते</string>
+    <string name="cloud_sync_title">Cloud Backup &amp; Sync</string>
+    <string name="cloud_sync_subtitle">Secure your farm records in the cloud and access them anytime</string>
+    <string name="auth_google_button">Continue with Google</string>
+    <string name="auth_sign_out">Sign Out</string>
+    <string name="auth_status_signed_in">Connected Account</string>
+    <string name="auth_status_guest">Offline / Local Mode</string>
+    <string name="sync_status_synced">All records safely backed up</string>
+    <string name="sync_status_syncing">Syncing with cloud…</string>
+    <string name="sync_status_pending">%d local changes waiting to sync</string>
+    <string name="sync_status_offline">Offline mode (records stored safely on device)</string>
+    <string name="sync_action_now">Sync Now</string>
+    <string name="sync_last_time">Last synchronized: %s</string>
+    <string name="sync_never">Never</string>
+    <string name="supabase_config_status">Supabase Cloud Connection</string>
+    <string name="supabase_connected">Backend connected</string>
+    <string name="supabase_unconfigured">Local-only mode (.env Supabase credentials optional)</string>
+    <string name="first_login_banner">Your local farm records are preserved and will automatically sync with your account.</string>
 </resources>

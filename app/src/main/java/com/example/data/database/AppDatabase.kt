@@ -34,7 +34,7 @@ import com.example.data.model.YieldRecord
         TaskWorkerAssignment::class,
         Expense::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -47,6 +47,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun yieldRecordDao(): YieldRecordDao
     abstract fun dailyTaskDao(): DailyTaskDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun syncDao(): com.example.data.dao.SyncDao
 
     companion object {
         @Volatile

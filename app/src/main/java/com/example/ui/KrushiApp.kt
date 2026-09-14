@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Grass
@@ -44,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +67,7 @@ import androidx.navigation.navArgument
 import com.example.R
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.AttendanceScreen
+import com.example.ui.screens.CloudSyncScreen
 import com.example.ui.screens.CropsScreen
 import com.example.ui.screens.ExpensesScreen
 import com.example.ui.screens.HomeScreen
@@ -112,7 +115,8 @@ fun KrushiApp(viewModel: FarmViewModel) {
         DrawerMenuItem(Screen.Payments.route, "Worker Payments", "मजुरी व उचल", Icons.Default.MonetizationOn),
         DrawerMenuItem(Screen.Expenses.route, "Farm Expenses", "शेती खर्च", Icons.Default.ReceiptLong),
         DrawerMenuItem(Screen.Tasks.route, "Daily Tasks", "रोजची कामे", Icons.Default.DateRange),
-        DrawerMenuItem(Screen.Yield.route, "Harvest & Yield", "उत्पादन व विक्री", Icons.Default.Agriculture)
+        DrawerMenuItem(Screen.Yield.route, "Harvest & Yield", "उत्पादन व विक्री", Icons.Default.Agriculture),
+        DrawerMenuItem(Screen.CloudSync.route, "Cloud & Account", "क्लाउड आणि खाते", Icons.Default.CloudSync)
     )
 
     fun navigateTo(route: String) {
@@ -367,6 +371,13 @@ fun KrushiApp(viewModel: FarmViewModel) {
 
                     composable(Screen.Yield.route) {
                         YieldScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                        )
+                    }
+
+                    composable(Screen.CloudSync.route) {
+                        CloudSyncScreen(
                             viewModel = viewModel,
                             onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
                         )

@@ -24,8 +24,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.MonetizationOn
@@ -34,6 +39,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -48,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.model.DailyTask
 import com.example.data.model.TaskWithDetails
+import com.example.data.sync.SyncState
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiTopBar
 import com.example.ui.components.StatCard
@@ -76,6 +84,8 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit
 ) {
     val dashboard by viewModel.dashboardState.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val todayDateFormatted = DateUtils.formatForDisplay(DateUtils.today())
 
     Scaffold(
@@ -83,7 +93,55 @@ fun HomeScreen(
             KrushiTopBar(
                 title = stringResource(R.string.app_name),
                 subtitle = stringResource(R.string.app_name_marathi) + " • " + stringResource(R.string.app_tagline),
-                onNavigationClick = onOpenDrawer
+                onNavigationClick = onOpenDrawer,
+                actions = {
+                    IconButton(
+                        onClick = { onNavigate(Screen.CloudSync.route) },
+                        modifier = Modifier.testTag("home_cloud_sync_action")
+                    ) {
+                        when (syncState) {
+                            is SyncState.Syncing -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            is SyncState.Pending -> {
+                                Icon(
+                                    imageVector = Icons.Default.CloudQueue,
+                                    contentDescription = "Sync Pending",
+                                    tint = Color(0xFFE65100),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            is SyncState.Offline -> {
+                                Icon(
+                                    imageVector = Icons.Default.CloudOff,
+                                    contentDescription = "Offline Mode",
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            is SyncState.Error -> {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = "Sync Error",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            is SyncState.Synced -> {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDone,
+                                    contentDescription = "Cloud Synced",
+                                    tint = Color(0xFF2E7D32),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -95,6 +153,44 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            // Cloud Sync Status Alert Banner (if offline or pending or not signed in)
+            if (currentUser == null) {
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigate(Screen.CloudSync.route) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudSync,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Local mode active. Tap to link Google Account & Cloud Backup.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Header Banner
             item {
                 Card(

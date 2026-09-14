@@ -20,7 +20,10 @@ import com.example.data.model.YieldWithCrop
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
-class FarmRepository(private val db: AppDatabase) {
+class FarmRepository(
+    private val db: AppDatabase,
+    private val syncEngine: com.example.data.sync.SyncEngine? = null
+) {
 
     private val workerDao = db.workerDao()
     private val attendanceDao = db.attendanceDao()
@@ -31,19 +34,43 @@ class FarmRepository(private val db: AppDatabase) {
     private val dailyTaskDao = db.dailyTaskDao()
     private val expenseDao = db.expenseDao()
 
+    private fun triggerSync() {
+        syncEngine?.triggerSync()
+    }
+
     // Plots
     fun getPlots(includeArchived: Boolean = false): Flow<List<Plot>> =
         plotDao.getPlotsFlow(includeArchived)
 
     fun getPlotById(id: String): Flow<Plot?> = plotDao.getPlotByIdFlow(id)
 
-    suspend fun insertPlot(plot: Plot) = plotDao.insertPlot(plot)
+    suspend fun insertPlot(plot: Plot) {
+        val toInsert = plot.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        plotDao.insertPlot(toInsert)
+        triggerSync()
+    }
 
-    suspend fun updatePlot(plot: Plot) = plotDao.updatePlot(plot)
+    suspend fun updatePlot(plot: Plot) {
+        val toUpdate = plot.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        plotDao.updatePlot(toUpdate)
+        triggerSync()
+    }
 
-    suspend fun archivePlot(id: String, archived: Boolean) = plotDao.setPlotArchived(id, archived)
+    suspend fun archivePlot(id: String, archived: Boolean) {
+        plotDao.setPlotArchived(id, archived)
+        triggerSync()
+    }
 
-    suspend fun deletePlot(id: String) = plotDao.deletePlot(id)
+    suspend fun deletePlot(id: String) {
+        plotDao.deletePlot(id)
+        triggerSync()
+    }
 
     fun getPlotDetails(plotId: String): Flow<PlotDetails?> {
         return combine(
@@ -76,14 +103,33 @@ class FarmRepository(private val db: AppDatabase) {
 
     fun getCropById(id: String): Flow<CropAssignment?> = cropAssignmentDao.getCropByIdFlow(id)
 
-    suspend fun insertCrop(crop: CropAssignment) = cropAssignmentDao.insertCrop(crop)
+    suspend fun insertCrop(crop: CropAssignment) {
+        val toInsert = crop.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        cropAssignmentDao.insertCrop(toInsert)
+        triggerSync()
+    }
 
-    suspend fun updateCrop(crop: CropAssignment) = cropAssignmentDao.updateCrop(crop)
+    suspend fun updateCrop(crop: CropAssignment) {
+        val toUpdate = crop.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        cropAssignmentDao.updateCrop(toUpdate)
+        triggerSync()
+    }
 
-    suspend fun updateCropStatus(id: String, status: String) =
+    suspend fun updateCropStatus(id: String, status: String) {
         cropAssignmentDao.updateCropStatus(id, status)
+        triggerSync()
+    }
 
-    suspend fun deleteCrop(id: String) = cropAssignmentDao.deleteCrop(id)
+    suspend fun deleteCrop(id: String) {
+        cropAssignmentDao.deleteCrop(id)
+        triggerSync()
+    }
 
     // Workers
     fun getWorkers(includeArchived: Boolean = false): Flow<List<Worker>> =
@@ -91,14 +137,33 @@ class FarmRepository(private val db: AppDatabase) {
 
     fun getWorkerById(id: String): Flow<Worker?> = workerDao.getWorkerByIdFlow(id)
 
-    suspend fun insertWorker(worker: Worker) = workerDao.insertWorker(worker)
+    suspend fun insertWorker(worker: Worker) {
+        val toInsert = worker.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        workerDao.insertWorker(toInsert)
+        triggerSync()
+    }
 
-    suspend fun updateWorker(worker: Worker) = workerDao.updateWorker(worker)
+    suspend fun updateWorker(worker: Worker) {
+        val toUpdate = worker.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        workerDao.updateWorker(toUpdate)
+        triggerSync()
+    }
 
-    suspend fun archiveWorker(id: String, archived: Boolean) =
+    suspend fun archiveWorker(id: String, archived: Boolean) {
         workerDao.setWorkerArchived(id, archived)
+        triggerSync()
+    }
 
-    suspend fun deleteWorker(id: String) = workerDao.deleteWorker(id)
+    suspend fun deleteWorker(id: String) {
+        workerDao.deleteWorker(id)
+        triggerSync()
+    }
 
     fun getWorkerDetails(workerId: String): Flow<WorkerDetails?> {
         return combine(
@@ -138,11 +203,26 @@ class FarmRepository(private val db: AppDatabase) {
     fun getAttendanceForDate(date: String): Flow<List<Attendance>> =
         attendanceDao.getAttendanceForDateFlow(date)
 
-    suspend fun recordAttendance(attendance: Attendance) =
-        attendanceDao.recordAttendance(attendance)
+    suspend fun recordAttendance(attendance: Attendance) {
+        val toRecord = attendance.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        attendanceDao.recordAttendance(toRecord)
+        triggerSync()
+    }
 
-    suspend fun recordAttendanceBatch(list: List<Attendance>) =
-        attendanceDao.recordAttendanceBatch(list)
+    suspend fun recordAttendanceBatch(list: List<Attendance>) {
+        val now = System.currentTimeMillis()
+        val toRecord = list.map {
+            it.copy(
+                updatedAt = now,
+                syncStatus = com.example.data.model.SyncStatus.PENDING
+            )
+        }
+        attendanceDao.recordAttendanceBatch(toRecord)
+        triggerSync()
+    }
 
     // Worker Transactions (Salary / Advance)
     fun getAllTransactions(): Flow<List<WorkerTransaction>> =
@@ -151,11 +231,19 @@ class FarmRepository(private val db: AppDatabase) {
     fun getTransactionsForWorker(workerId: String): Flow<List<WorkerTransaction>> =
         workerTransactionDao.getTransactionsForWorkerFlow(workerId)
 
-    suspend fun insertTransaction(transaction: WorkerTransaction) =
-        workerTransactionDao.insertTransaction(transaction)
+    suspend fun insertTransaction(transaction: WorkerTransaction) {
+        val toInsert = transaction.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        workerTransactionDao.insertTransaction(toInsert)
+        triggerSync()
+    }
 
-    suspend fun deleteTransaction(id: String) =
+    suspend fun deleteTransaction(id: String) {
         workerTransactionDao.deleteTransaction(id)
+        triggerSync()
+    }
 
     // Expenses
     fun getAllExpenses(): Flow<List<Expense>> = expenseDao.getAllExpensesFlow()
@@ -163,11 +251,28 @@ class FarmRepository(private val db: AppDatabase) {
     fun getExpensesForPlot(plotId: String): Flow<List<Expense>> =
         expenseDao.getExpensesForPlotFlow(plotId)
 
-    suspend fun insertExpense(expense: Expense) = expenseDao.insertExpense(expense)
+    suspend fun insertExpense(expense: Expense) {
+        val toInsert = expense.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        expenseDao.insertExpense(toInsert)
+        triggerSync()
+    }
 
-    suspend fun updateExpense(expense: Expense) = expenseDao.updateExpense(expense)
+    suspend fun updateExpense(expense: Expense) {
+        val toUpdate = expense.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        expenseDao.updateExpense(toUpdate)
+        triggerSync()
+    }
 
-    suspend fun deleteExpense(id: String) = expenseDao.deleteExpense(id)
+    suspend fun deleteExpense(id: String) {
+        expenseDao.deleteExpense(id)
+        triggerSync()
+    }
 
     // Tasks
     fun getAllTasksWithDetails(): Flow<List<TaskWithDetails>> =
@@ -177,28 +282,57 @@ class FarmRepository(private val db: AppDatabase) {
         dailyTaskDao.getTasksWithDetailsForDateFlow(date)
 
     suspend fun insertTaskWithWorkers(task: DailyTask, workerIds: List<String>) {
-        dailyTaskDao.insertTask(task)
+        val now = System.currentTimeMillis()
+        val toInsert = task.copy(
+            updatedAt = now,
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        dailyTaskDao.insertTask(toInsert)
         if (workerIds.isNotEmpty()) {
-            val assignments = workerIds.map { TaskWorkerAssignment(taskId = task.id, workerId = it) }
+            val assignments = workerIds.map {
+                TaskWorkerAssignment(
+                    taskId = task.id,
+                    workerId = it,
+                    updatedAt = now,
+                    syncStatus = com.example.data.model.SyncStatus.PENDING
+                )
+            }
             dailyTaskDao.insertTaskWorkers(assignments)
         }
+        triggerSync()
     }
 
     suspend fun updateTaskWithWorkers(task: DailyTask, workerIds: List<String>) {
-        dailyTaskDao.updateTask(task)
+        val now = System.currentTimeMillis()
+        val toUpdate = task.copy(
+            updatedAt = now,
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        dailyTaskDao.updateTask(toUpdate)
         dailyTaskDao.deleteTaskWorkers(task.id)
         if (workerIds.isNotEmpty()) {
-            val assignments = workerIds.map { TaskWorkerAssignment(taskId = task.id, workerId = it) }
+            val assignments = workerIds.map {
+                TaskWorkerAssignment(
+                    taskId = task.id,
+                    workerId = it,
+                    updatedAt = now,
+                    syncStatus = com.example.data.model.SyncStatus.PENDING
+                )
+            }
             dailyTaskDao.insertTaskWorkers(assignments)
         }
+        triggerSync()
     }
 
-    suspend fun setTaskCompletion(id: String, isCompleted: Boolean) =
+    suspend fun setTaskCompletion(id: String, isCompleted: Boolean) {
         dailyTaskDao.setTaskCompleted(id, isCompleted)
+        triggerSync()
+    }
 
     suspend fun deleteTask(id: String) {
         dailyTaskDao.deleteTaskWorkers(id)
         dailyTaskDao.deleteTask(id)
+        triggerSync()
     }
 
     // Yield
@@ -208,12 +342,26 @@ class FarmRepository(private val db: AppDatabase) {
     fun getYieldsForCrop(cropId: String): Flow<List<YieldRecord>> =
         yieldRecordDao.getYieldsForCropFlow(cropId)
 
-    suspend fun insertYield(yieldRecord: YieldRecord) =
-        yieldRecordDao.insertYield(yieldRecord)
+    suspend fun insertYield(yieldRecord: YieldRecord) {
+        val toInsert = yieldRecord.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        yieldRecordDao.insertYield(toInsert)
+        triggerSync()
+    }
 
-    suspend fun updateYield(yieldRecord: YieldRecord) =
-        yieldRecordDao.updateYield(yieldRecord)
+    suspend fun updateYield(yieldRecord: YieldRecord) {
+        val toUpdate = yieldRecord.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = com.example.data.model.SyncStatus.PENDING
+        )
+        yieldRecordDao.updateYield(toUpdate)
+        triggerSync()
+    }
 
-    suspend fun deleteYield(id: String) =
+    suspend fun deleteYield(id: String) {
         yieldRecordDao.deleteYield(id)
+        triggerSync()
+    }
 }

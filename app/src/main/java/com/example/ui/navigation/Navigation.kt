@@ -16,4 +16,5 @@ sealed class Screen(val route: String, val titleRes: Int) {
     object Expenses : Screen("expenses", com.example.R.string.nav_expenses)
     object Tasks : Screen("tasks", com.example.R.string.nav_tasks)
     object Yield : Screen("yield", com.example.R.string.nav_yield)
+    object CloudSync : Screen("cloud_sync", com.example.R.string.nav_cloud_sync)
 }

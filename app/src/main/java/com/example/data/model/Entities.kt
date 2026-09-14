@@ -90,10 +90,19 @@ object YieldUnits {
     val all = listOf(KG, QUINTAL, TON, CRATE, BAG, BOX)
 }
 
+object SyncStatus {
+    const val SYNCED = "SYNCED"
+    const val PENDING = "PENDING"
+}
+
 // 1. Worker
 @Entity(
     tableName = "workers",
-    indices = [Index(value = ["name"])]
+    indices = [
+        Index(value = ["name"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
+    ]
 )
 data class Worker(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
@@ -102,7 +111,12 @@ data class Worker(
     val dailyWageRate: Double = 0.0,
     val joiningDate: String = "",
     val notes: String = "",
-    val archived: Boolean = false
+    val archived: Boolean = false,
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 2. Attendance
@@ -111,7 +125,9 @@ data class Worker(
     primaryKeys = ["workerId", "date"],
     indices = [
         Index(value = ["date"]),
-        Index(value = ["workerId"])
+        Index(value = ["workerId"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -125,7 +141,12 @@ data class Worker(
 data class Attendance(
     val workerId: String,
     val date: String, // YYYY-MM-DD
-    val status: String // PRESENT, ABSENT, HALF_DAY
+    val status: String, // PRESENT, ABSENT, HALF_DAY
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 3. Worker Transaction
@@ -133,7 +154,9 @@ data class Attendance(
     tableName = "worker_transactions",
     indices = [
         Index(value = ["workerId"]),
-        Index(value = ["date"])
+        Index(value = ["date"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -150,13 +173,22 @@ data class WorkerTransaction(
     val type: String, // ADVANCE, SALARY
     val amount: Double,
     val date: String, // YYYY-MM-DD
-    val notes: String = ""
+    val notes: String = "",
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 4. Plot
 @Entity(
     tableName = "plots",
-    indices = [Index(value = ["name"])]
+    indices = [
+        Index(value = ["name"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
+    ]
 )
 data class Plot(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
@@ -166,7 +198,12 @@ data class Plot(
     val soilType: String = "",
     val irrigationType: String = "",
     val notes: String = "",
-    val archived: Boolean = false
+    val archived: Boolean = false,
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 5. Crop Assignment
@@ -174,7 +211,9 @@ data class Plot(
     tableName = "crop_assignments",
     indices = [
         Index(value = ["plotId"]),
-        Index(value = ["status"])
+        Index(value = ["status"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -193,7 +232,12 @@ data class CropAssignment(
     val plantingDate: String, // YYYY-MM-DD
     val expectedHarvestDate: String, // YYYY-MM-DD
     val status: String = CropStatuses.PLANNED, // PLANNED, ACTIVE, HARVESTED
-    val perennial: Boolean = false
+    val perennial: Boolean = false,
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 6. Yield Record
@@ -201,7 +245,9 @@ data class CropAssignment(
     tableName = "yield_records",
     indices = [
         Index(value = ["cropAssignmentId"]),
-        Index(value = ["date"])
+        Index(value = ["date"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -220,7 +266,12 @@ data class YieldRecord(
     val unit: String = "kg",
     val ratePerUnit: Double = 0.0,
     val totalRevenue: Double = 0.0,
-    val notes: String = ""
+    val notes: String = "",
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 7. Daily Task
@@ -228,7 +279,9 @@ data class YieldRecord(
     tableName = "daily_tasks",
     indices = [
         Index(value = ["date"]),
-        Index(value = ["plotId"])
+        Index(value = ["plotId"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -247,7 +300,12 @@ data class DailyTask(
     val description: String,
     val durationHours: Double = 0.0,
     val isCompleted: Boolean = false,
-    val notes: String = ""
+    val notes: String = "",
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 8. Task-Worker Assignment (Many-to-Many)
@@ -256,7 +314,9 @@ data class DailyTask(
     primaryKeys = ["taskId", "workerId"],
     indices = [
         Index(value = ["workerId"]),
-        Index(value = ["taskId"])
+        Index(value = ["taskId"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -275,7 +335,12 @@ data class DailyTask(
 )
 data class TaskWorkerAssignment(
     val taskId: String,
-    val workerId: String
+    val workerId: String,
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )
 
 // 9. Expense
@@ -284,7 +349,9 @@ data class TaskWorkerAssignment(
     indices = [
         Index(value = ["date"]),
         Index(value = ["category"]),
-        Index(value = ["plotId"])
+        Index(value = ["plotId"]),
+        Index(value = ["userId"]),
+        Index(value = ["updatedAt"])
     ],
     foreignKeys = [
         ForeignKey(
@@ -301,5 +368,10 @@ data class Expense(
     val category: String,
     val amount: Double,
     val description: String,
-    val plotId: String? = null
+    val plotId: String? = null,
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null,
+    val syncStatus: String = SyncStatus.PENDING
 )

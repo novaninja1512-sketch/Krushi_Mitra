@@ -45,7 +45,63 @@ data class DashboardState(
     val isLoading: Boolean = false
 )
 
-class FarmViewModel(private val repository: FarmRepository) : ViewModel() {
+class FarmViewModel(
+    private val repository: FarmRepository,
+    private val authRepository: com.example.data.auth.AuthRepository? = null,
+    private val syncEngine: com.example.data.sync.SyncEngine? = null
+) : ViewModel() {
+
+    // Auth & Sync
+    val authState: StateFlow<com.example.data.auth.AuthState> = authRepository?.authState
+        ?: MutableStateFlow(com.example.data.auth.AuthState.Unauthenticated)
+
+    val currentUser: StateFlow<com.example.data.auth.UserProfile?> = authRepository?.currentUser
+        ?: MutableStateFlow(null)
+
+    val syncState: StateFlow<com.example.data.sync.SyncState> = syncEngine?.syncState
+        ?: MutableStateFlow(com.example.data.sync.SyncState.Synced(0L))
+
+    fun isSupabaseConfigured(): Boolean = com.example.data.sync.SupabaseClientProvider.isConfigured
+
+    fun isOnline(): Boolean = syncEngine?.isOnline() ?: false
+
+    fun signInWithGoogle() {
+        viewModelScope.launch {
+            if (!isSupabaseConfigured()) {
+                _userMessage.emit("Supabase credentials not configured yet. Add them in Settings or .env.")
+                return@launch
+            }
+            authRepository?.signInWithGoogle()?.onFailure { error ->
+                _userMessage.emit("Sign in failed: ${error.localizedMessage ?: "Unknown error"}")
+            }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository?.signOut()?.onSuccess {
+                _userMessage.emit("Signed out successfully")
+            }
+        }
+    }
+
+    fun triggerSync() {
+        viewModelScope.launch {
+            if (currentUser.value == null) {
+                _userMessage.emit("Please sign in to sync with cloud")
+                return@launch
+            }
+            if (!isOnline()) {
+                _userMessage.emit("No internet connection. Changes saved locally.")
+                return@launch
+            }
+            syncEngine?.performSync()?.onSuccess {
+                _userMessage.emit("Sync completed successfully")
+            }?.onFailure { error ->
+                _userMessage.emit("Sync failed: ${error.localizedMessage ?: "Unknown error"}")
+            }
+        }
+    }
 
     // Notification / UI Messages
     private val _userMessage = MutableSharedFlow<String>()
@@ -641,11 +697,15 @@ class FarmViewModel(private val repository: FarmRepository) : ViewModel() {
     }
 }
 
-class FarmViewModelFactory(private val repository: FarmRepository) : ViewModelProvider.Factory {
+class FarmViewModelFactory(
+    private val repository: FarmRepository,
+    private val authRepository: com.example.data.auth.AuthRepository? = null,
+    private val syncEngine: com.example.data.sync.SyncEngine? = null
+) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FarmViewModel::class.java)) {
-            return FarmViewModel(repository) as T
+            return FarmViewModel(repository, authRepository, syncEngine) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
