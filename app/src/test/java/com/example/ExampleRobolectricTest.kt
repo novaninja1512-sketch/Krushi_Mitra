@@ -94,24 +94,26 @@ class ExampleRobolectricTest {
 
     @Test
     fun `verify soft delete tombstone and pending sync tracking`() = runBlocking {
+        val testUserId = "test-user-123"
         val plot = Plot(
             id = "plot-sync-1",
             name = "South Field",
             area = 4.0,
             soilType = "Sandy Loam",
             irrigationType = "Canal",
+            userId = testUserId,
             syncStatus = SyncStatus.PENDING
         )
         db.plotDao().insertPlot(plot)
 
         // Verify it is pending
-        val pendingPlotsBefore = db.syncDao().getPendingPlots()
+        val pendingPlotsBefore = db.syncDao().getPendingPlots(testUserId)
         assertEquals(1, pendingPlotsBefore.size)
         assertEquals(SyncStatus.PENDING, pendingPlotsBefore[0].syncStatus)
 
         // Mark synced
         db.syncDao().markPlotsSynced(listOf("plot-sync-1"))
-        val pendingAfterSync = db.syncDao().getPendingPlots()
+        val pendingAfterSync = db.syncDao().getPendingPlots(testUserId)
         assertTrue(pendingAfterSync.isEmpty())
 
         // Soft delete the plot
@@ -123,7 +125,7 @@ class ExampleRobolectricTest {
         assertTrue(uiPlots.none { it.id == "plot-sync-1" })
 
         // Verify syncDao returns the soft-deleted plot so it can be pushed to Supabase
-        val pendingAfterDelete = db.syncDao().getPendingPlots()
+        val pendingAfterDelete = db.syncDao().getPendingPlots(testUserId)
         assertEquals(1, pendingAfterDelete.size)
         assertEquals("plot-sync-1", pendingAfterDelete[0].id)
         assertNotNull(pendingAfterDelete[0].deletedAt)
@@ -155,12 +157,12 @@ class ExampleRobolectricTest {
         db.syncDao().associateAllLocalRecordsToUser(testUserId)
 
         // Check that records now have the user_id and PENDING syncStatus
-        val pendingPlots = db.syncDao().getPendingPlots()
+        val pendingPlots = db.syncDao().getPendingPlots(testUserId)
         assertEquals(1, pendingPlots.size)
         assertEquals(testUserId, pendingPlots[0].userId)
         assertEquals(SyncStatus.PENDING, pendingPlots[0].syncStatus)
 
-        val pendingWorkers = db.syncDao().getPendingWorkers()
+        val pendingWorkers = db.syncDao().getPendingWorkers(testUserId)
         assertEquals(1, pendingWorkers.size)
         assertEquals(testUserId, pendingWorkers[0].userId)
         assertEquals(SyncStatus.PENDING, pendingWorkers[0].syncStatus)

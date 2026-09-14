@@ -22,32 +22,48 @@ interface SyncDao {
 
     // --- 1. Pending Local Changes Retrieval (for cloud upload, strictly scoped by user) ---
 
-    @Query("SELECT * FROM plots WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingPlots(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Plot>
+    @Query("SELECT * FROM plots WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingPlots(userId: String, pendingStatus: String = SyncStatus.PENDING): List<Plot>
 
-    @Query("SELECT * FROM crop_assignments WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingCrops(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<CropAssignment>
+    @Query("SELECT * FROM crop_assignments WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingCrops(userId: String, pendingStatus: String = SyncStatus.PENDING): List<CropAssignment>
 
-    @Query("SELECT * FROM yield_records WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingYields(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<YieldRecord>
+    @Query("SELECT * FROM yield_records WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingYields(userId: String, pendingStatus: String = SyncStatus.PENDING): List<YieldRecord>
 
-    @Query("SELECT * FROM workers WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingWorkers(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Worker>
+    @Query("SELECT * FROM workers WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingWorkers(userId: String, pendingStatus: String = SyncStatus.PENDING): List<Worker>
 
-    @Query("SELECT * FROM attendance WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingAttendance(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Attendance>
+    @Query("SELECT * FROM attendance WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingAttendance(userId: String, pendingStatus: String = SyncStatus.PENDING): List<Attendance>
 
-    @Query("SELECT * FROM worker_transactions WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingTransactions(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<WorkerTransaction>
+    @Query("SELECT * FROM worker_transactions WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingTransactions(userId: String, pendingStatus: String = SyncStatus.PENDING): List<WorkerTransaction>
 
-    @Query("SELECT * FROM daily_tasks WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingTasks(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<DailyTask>
+    @Query("SELECT * FROM daily_tasks WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingTasks(userId: String, pendingStatus: String = SyncStatus.PENDING): List<DailyTask>
 
-    @Query("SELECT * FROM task_worker_assignments WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingTaskWorkers(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<TaskWorkerAssignment>
+    @Query("SELECT * FROM task_worker_assignments WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingTaskWorkers(userId: String, pendingStatus: String = SyncStatus.PENDING): List<TaskWorkerAssignment>
 
-    @Query("SELECT * FROM expenses WHERE syncStatus = :pendingStatus AND (:userId IS NULL OR userId = :userId OR userId IS NULL OR userId = '')")
-    suspend fun getPendingExpenses(userId: String? = null, pendingStatus: String = SyncStatus.PENDING): List<Expense>
+    @Query("SELECT * FROM expenses WHERE syncStatus = :pendingStatus AND userId = :userId")
+    suspend fun getPendingExpenses(userId: String, pendingStatus: String = SyncStatus.PENDING): List<Expense>
+
+    // --- Query for detecting unassigned legacy local records (prior to first-login migration) ---
+    @Query("""
+        SELECT (
+            (SELECT COUNT(*) FROM plots WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM crop_assignments WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM yield_records WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM workers WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM attendance WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM worker_transactions WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM daily_tasks WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM task_worker_assignments WHERE userId IS NULL OR userId = '') +
+            (SELECT COUNT(*) FROM expenses WHERE userId IS NULL OR userId = '')
+        )
+    """)
+    suspend fun getUnassignedRecordsCount(): Int
 
     // --- 2. Mark Synced After Upload ---
 
@@ -178,6 +194,21 @@ interface SyncDao {
     suspend fun getExpenseById(id: String): Expense?
 
     // --- 5. Pending Changes Counter Flow ---
+    @Query("""
+        SELECT (
+            (SELECT COUNT(*) FROM plots WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM crop_assignments WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM yield_records WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM workers WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM attendance WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM worker_transactions WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM daily_tasks WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM task_worker_assignments WHERE syncStatus = 'PENDING' AND userId = :userId) +
+            (SELECT COUNT(*) FROM expenses WHERE syncStatus = 'PENDING' AND userId = :userId)
+        )
+    """)
+    fun getPendingCountForUserFlow(userId: String): Flow<Int>
+
     @Query("""
         SELECT (
             (SELECT COUNT(*) FROM plots WHERE syncStatus = 'PENDING') +

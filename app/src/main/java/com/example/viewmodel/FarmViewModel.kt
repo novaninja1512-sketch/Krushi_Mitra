@@ -80,6 +80,7 @@ class FarmViewModel(
 
     fun signOut() {
         viewModelScope.launch {
+            syncEngine?.cancelSync()
             authRepository?.signOut()?.onSuccess {
                 _userMessage.emit("Signed out successfully")
             }

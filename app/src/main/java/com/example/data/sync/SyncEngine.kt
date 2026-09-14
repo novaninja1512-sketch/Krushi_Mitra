@@ -74,12 +74,37 @@ class SyncEngine(
         observePendingCount()
     }
 
+    companion object {
+        private const val KEY_LAST_SYNC_TIME = "last_sync_time"
+        private const val KEY_DEVICE_ESTABLISHED_USER_ID = "device_established_user_id"
+    }
+
     private fun getLastSyncTime(): Long {
-        return prefs.getLong("last_sync_time", 0L)
+        return prefs.getLong(KEY_LAST_SYNC_TIME, 0L)
     }
 
     private fun setLastSyncTime(time: Long) {
-        prefs.edit().putLong("last_sync_time", time).apply()
+        prefs.edit().putLong(KEY_LAST_SYNC_TIME, time).apply()
+    }
+
+    suspend fun executeFirstLoginMigrationIfNeeded(userId: String): Boolean = withContext(Dispatchers.IO) {
+        val establishedUserId = prefs.getString(KEY_DEVICE_ESTABLISHED_USER_ID, null)
+
+        if (establishedUserId == null) {
+            val syncDao = database.syncDao()
+            val unassignedCount = syncDao.getUnassignedRecordsCount()
+            if (unassignedCount > 0) {
+                Log.i(TAG, "First-login migration: Associating $unassignedCount unassigned local records to first account $userId")
+                syncDao.associateAllLocalRecordsToUser(userId)
+            }
+            prefs.edit().putString(KEY_DEVICE_ESTABLISHED_USER_ID, userId).apply()
+            true
+        } else if (establishedUserId == userId) {
+            false
+        } else {
+            Log.w(TAG, "Account B ($userId) signed in on device established by Account A ($establishedUserId). Unassigned records will not be reassigned.")
+            false
+        }
     }
 
     private fun observePendingCount() {
@@ -139,12 +164,24 @@ class SyncEngine(
         }
     }
 
+    fun cancelSync() {
+        syncJob?.cancel()
+        _syncState.value = SyncState.Synced(getLastSyncTime())
+    }
+
     suspend fun performSync(): Result<Unit> = withContext(Dispatchers.IO) {
         syncMutex.withLock {
             val user = authRepository.currentUser.value
             if (user == null || !authRepository.isSessionValid()) {
                 Log.d(TAG, "User not authenticated or session is invalid. Sync skipped.")
                 return@withContext Result.success(Unit)
+            }
+
+            val syncSessionUserId = user.id
+
+            fun isSessionActive(): Boolean {
+                val current = authRepository.currentUser.value ?: return false
+                return current.id == syncSessionUserId && authRepository.isSessionValid()
             }
 
             if (!isOnline()) {
@@ -162,38 +199,61 @@ class SyncEngine(
 
             try {
                 val syncDao = database.syncDao()
-                val userId = user.id
 
-                // 1. Associate any existing unassigned local records to this authenticated user
-                syncDao.associateAllLocalRecordsToUser(userId)
+                // 1. Safe first-account migration (claims legacy unassigned data only once on initial account setup)
+                executeFirstLoginMigrationIfNeeded(syncSessionUserId)
 
-                // 2. UPLOAD PHASE (Push local pending changes to Supabase)
+                if (!isSessionActive()) {
+                    Log.w(TAG, "Session changed or invalid before uploads. Aborting sync.")
+                    return@withContext Result.success(Unit)
+                }
+
+                // 2. UPLOAD PHASE (Push local pending changes strictly scoped to this authenticated user)
                 // Order strictly follows foreign keys
-                uploadPlots(client, syncDao, userId)
-                uploadCrops(client, syncDao, userId)
-                uploadYieldRecords(client, syncDao, userId)
-                uploadWorkers(client, syncDao, userId)
-                uploadAttendance(client, syncDao, userId)
-                uploadTransactions(client, syncDao, userId)
-                uploadDailyTasks(client, syncDao, userId)
-                uploadTaskWorkers(client, syncDao, userId)
-                uploadExpenses(client, syncDao, userId)
+                uploadPlots(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadCrops(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadYieldRecords(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadWorkers(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadAttendance(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadTransactions(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadDailyTasks(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadTaskWorkers(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                uploadExpenses(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
 
-                // 3. DOWNLOAD / PULL PHASE (Fetch cloud changes and merge via Last-Write-Wins with deterministic tombstone handling)
-                pullPlots(client, syncDao, userId)
-                pullCrops(client, syncDao, userId)
-                pullYieldRecords(client, syncDao, userId)
-                pullWorkers(client, syncDao, userId)
-                pullAttendance(client, syncDao, userId)
-                pullTransactions(client, syncDao, userId)
-                pullDailyTasks(client, syncDao, userId)
-                pullTaskWorkers(client, syncDao, userId)
-                pullExpenses(client, syncDao, userId)
+                // 3. DOWNLOAD / PULL PHASE (Fetch cloud changes strictly for this authenticated user)
+                // Merged via version-based conflict resolution with full tombstone semantics
+                pullPlots(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullCrops(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullYieldRecords(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullWorkers(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullAttendance(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullTransactions(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullDailyTasks(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullTaskWorkers(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
+                pullExpenses(client, syncDao, syncSessionUserId)
+                if (!isSessionActive()) return@withContext Result.success(Unit)
 
                 val now = System.currentTimeMillis()
                 setLastSyncTime(now)
                 _syncState.value = SyncState.Synced(now)
-                Log.d(TAG, "Sync completed successfully at $now")
+                Log.d(TAG, "Sync completed successfully at $now for user $syncSessionUserId")
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed: ${e.message}", e)
@@ -207,10 +267,14 @@ class SyncEngine(
     /**
      * Determines whether an incoming remote entity should overwrite local entity state.
      * Rules:
-     * 1. A stale remote copy must NEVER overwrite or resurrect a local tombstone.
-     * 2. A remote tombstone MUST be applied locally to delete local records.
-     * 3. Local pending changes take precedence over older remote updates.
-     * 4. Otherwise, remote changes are applied if remote timestamp >= local timestamp.
+     * - Deletion is treated strictly as a version with an authoritative timestamp (updatedAt).
+     * - If remoteVersion > localVersion: remote wins (applies remote update or remote tombstone).
+     * - If remoteVersion < localVersion: local wins (stale remote deletions cannot delete newer local records,
+     *   and stale remote active updates cannot resurrect newer local tombstones).
+     * - If remoteVersion == localVersion:
+     *   - If local has un-synced pending changes (localSyncStatus == PENDING), protect local changes (return false).
+     *   - If one is deleted and the other is active, tombstone wins tie-break (deletion precedence).
+     *   - Otherwise apply remote idempotently (return true).
      */
     fun shouldApplyRemote(
         localDeletedAt: Long?,
@@ -219,27 +283,37 @@ class SyncEngine(
         remoteDeletedAt: String?,
         remoteUpdatedAt: String?
     ): Boolean {
-        val remoteEpoch = TimeUtils.toEpoch(remoteUpdatedAt) ?: 0L
+        val remoteEpoch = TimeUtils.toEpoch(remoteUpdatedAt)
+            ?: TimeUtils.toEpoch(remoteDeletedAt)
+            ?: 0L
         val remoteIsDeleted = !remoteDeletedAt.isNullOrBlank()
         val localIsDeleted = localDeletedAt != null
+        val localVersion = localUpdatedAt
+        val remoteVersion = remoteEpoch
 
-        // Rule 1: Stale remote copy must NOT overwrite a local tombstone
-        if (localIsDeleted && !remoteIsDeleted) {
+        if (remoteVersion > localVersion) {
+            // Strictly newer remote version wins (whether active or tombstone)
+            return true
+        } else if (remoteVersion < localVersion) {
+            // Strictly newer local version wins (whether active or tombstone)
+            // Stale remote tombstone does NOT delete newer local record
+            // Stale remote active record does NOT resurrect newer local tombstone
             return false
-        }
-
-        // Rule 2: Remote tombstone takes precedence over local active record
-        if (remoteIsDeleted && !localIsDeleted) {
+        } else {
+            // Identical version / timestamp tie-breaking
+            if (localSyncStatus == SyncStatus.PENDING) {
+                // Local un-synced user changes take precedence
+                return false
+            }
+            if (remoteIsDeleted && !localIsDeleted) {
+                return true
+            }
+            if (localIsDeleted && !remoteIsDeleted) {
+                return false
+            }
+            // Identical state and timestamp -> idempotent apply
             return true
         }
-
-        // Rule 3: Local pending un-synced changes newer than remote take precedence
-        if (localSyncStatus == SyncStatus.PENDING && localUpdatedAt > remoteEpoch) {
-            return false
-        }
-
-        // Rule 4: Otherwise apply remote
-        return true
     }
 
     // --- UPLOAD METHODS ---

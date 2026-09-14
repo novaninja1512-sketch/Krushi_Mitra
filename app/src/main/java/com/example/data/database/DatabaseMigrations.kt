@@ -179,7 +179,7 @@ object DatabaseMigrations {
                     `deletedAt` INTEGER DEFAULT NULL,
                     `syncStatus` TEXT NOT NULL DEFAULT 'PENDING',
                     PRIMARY KEY(`id`),
-                    FOREIGN KEY(`plotId`) REFERENCES `plots`(`id`) ON UPDATE NO ACTION ON DELETE SET_NULL
+                    FOREIGN KEY(`plotId`) REFERENCES `plots`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
                 )
             """.trimIndent())
 
@@ -204,6 +204,18 @@ object DatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_updatedAt` ON `expenses` (`updatedAt`)")
 
             db.execSQL("PRAGMA foreign_keys = ON")
+        }
+    }
+
+    /**
+     * Migration 1 -> 3:
+     * Direct migration path from version 1 to version 3.
+     * Sequentially applies MIGRATION_1_2 and MIGRATION_2_3.
+     */
+    val MIGRATION_1_3 = object : Migration(1, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            MIGRATION_1_2.migrate(db)
+            MIGRATION_2_3.migrate(db)
         }
     }
 }

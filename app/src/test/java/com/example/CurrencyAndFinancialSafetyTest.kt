@@ -107,4 +107,71 @@ class CurrencyAndFinancialSafetyTest {
         assertEquals(1479975L, total)
         assertEquals(14799.75, CurrencyUtils.paiseToRupees(total), 0.001)
     }
+
+    @Test
+    fun testOddWageAndHalfDayCalculations() {
+        // Daily wage ₹375 (37500 paise). Half day should be exactly 18750 paise.
+        val wage375 = 37500L
+        val earned1 = CurrencyUtils.calculateTotalEarnedPaise(
+            presentCount = 3,
+            halfDayCount = 1,
+            dailyWageRatePaise = wage375
+        )
+        // 3 * 37500 + 18750 = 112500 + 18750 = 131250 paise (₹1,312.50)
+        assertEquals(131250L, earned1)
+
+        // Odd daily wage ₹333.33 (33333 paise). Half day is 33333 / 2 = 16666 paise.
+        val wageOdd = 33333L
+        val earnedOdd = CurrencyUtils.calculateTotalEarnedPaise(
+            presentCount = 2,
+            halfDayCount = 1,
+            dailyWageRatePaise = wageOdd
+        )
+        // 2 * 33333 + 16666 = 66666 + 16666 = 83332 paise
+        assertEquals(83332L, earnedOdd)
+    }
+
+    @Test
+    fun testMultiAdvanceBalances() {
+        val dailyWage = 40000L // ₹400/day
+        val presentDays = 15
+        val halfDays = 2
+        // Total earned: 15 * 40000 + 2 * 20000 = 600,000 + 40,000 = 640,000 paise (₹6,400.00)
+
+        // 4 separate advances: ₹500, ₹250, ₹1000, ₹350
+        val advances = listOf(50000L, 25000L, 100000L, 35000L)
+        val totalAdvances = advances.sum() // 210,000 paise (₹2,100.00)
+
+        // 2 salary payouts: ₹2000, ₹1500
+        val salaries = listOf(200000L, 150000L)
+        val totalSalaries = salaries.sum() // 350,000 paise (₹3,500.00)
+
+        val balance = CurrencyUtils.calculateWorkerBalancePaise(
+            presentCount = presentDays,
+            halfDayCount = halfDays,
+            dailyWageRatePaise = dailyWage,
+            totalAdvancePaise = totalAdvances,
+            totalSalaryPaise = totalSalaries
+        )
+        // Balance: 640,000 - 210,000 - 350,000 = 80,000 paise (₹800.00)
+        assertEquals(80000L, balance)
+    }
+
+    @Test
+    fun testEdgeAndExtremeMonetaryValues() {
+        // Minimum non-zero value: 1 paisa (₹0.01)
+        assertEquals(1L, CurrencyUtils.rupeesToPaise(0.01))
+        assertEquals(0.01, CurrencyUtils.paiseToRupees(1L), 0.0001)
+
+        // Large monetary value: ₹5,000,000.00 (50 lakh rupees = 500,000,000 paise)
+        val largeRupees = 5000000.0
+        val largePaise = CurrencyUtils.rupeesToPaise(largeRupees)
+        assertEquals(500000000L, largePaise)
+        assertEquals(5000000.0, CurrencyUtils.paiseToRupees(largePaise), 0.001)
+
+        // Exact fractional crop yield calculation: 12.375 quintals at ₹3,250.60 per quintal (325060 paise)
+        // 12.375 * 325060 = 4,022,617.5 -> rounded to 4,022,618 paise (₹40,226.18)
+        val cropRevenue = CurrencyUtils.calculateRevenuePaise(12.375, 325060L)
+        assertEquals(4022618L, cropRevenue)
+    }
 }

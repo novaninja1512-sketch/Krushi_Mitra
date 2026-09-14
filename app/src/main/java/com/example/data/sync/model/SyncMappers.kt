@@ -46,7 +46,7 @@ object TimeUtils {
                 }
                 fallback.parse(isoString)?.time
             } catch (e2: Exception) {
-                System.currentTimeMillis()
+                null
             }
         }
     }
