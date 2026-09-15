@@ -112,7 +112,7 @@ class ExampleRobolectricTest {
         assertEquals(SyncStatus.PENDING, pendingPlotsBefore[0].syncStatus)
 
         // Mark synced
-        db.syncDao().markPlotsSynced(listOf("plot-sync-1"))
+        db.syncDao().markPlotsSynced(testUserId, listOf("plot-sync-1"))
         val pendingAfterSync = db.syncDao().getPendingPlots(testUserId)
         assertTrue(pendingAfterSync.isEmpty())
 

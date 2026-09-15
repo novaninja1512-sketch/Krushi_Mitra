@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(applicationContext)
         authRepository = AuthRepository(applicationContext)
         syncEngine = SyncEngine(applicationContext, database, authRepository)
-        val repository = FarmRepository(database, syncEngine)
+        val repository = FarmRepository(database, syncEngine, authRepository)
         FarmViewModelFactory(repository, authRepository, syncEngine)
     }
 

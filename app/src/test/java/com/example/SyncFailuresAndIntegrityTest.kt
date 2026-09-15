@@ -77,10 +77,10 @@ class SyncFailuresAndIntegrityTest {
 
             // Simulate successful upload and status mark
             if (pendingPlots.isNotEmpty()) {
-                syncDao.markPlotsSynced(listOf(plot.id))
+                syncDao.markPlotsSynced(userId, listOf(plot.id))
             }
             if (pendingWorkers.isNotEmpty()) {
-                syncDao.markWorkersSynced(listOf(worker.id))
+                syncDao.markWorkersSynced(userId, listOf(worker.id))
             }
 
             // Simulate download upsert of same record from remote
@@ -120,11 +120,11 @@ class SyncFailuresAndIntegrityTest {
 
         for (p in pending) {
             when (p.id) {
-                "p-A" -> syncDao.markPlotsSynced(listOf(p.id))
+                "p-A" -> syncDao.markPlotsSynced(userId, listOf(p.id))
                 "p-B" -> {
                     // Simulating network failure on B: do NOT mark synced
                 }
-                "p-C" -> syncDao.markPlotsSynced(listOf(p.id))
+                "p-C" -> syncDao.markPlotsSynced(userId, listOf(p.id))
             }
         }
 
@@ -139,7 +139,7 @@ class SyncFailuresAndIntegrityTest {
         assertEquals("p-B", retryPending[0].id)
 
         // Retry succeeds
-        syncDao.markPlotsSynced(listOf("p-B"))
+        syncDao.markPlotsSynced(userId, listOf("p-B"))
         assertEquals(0, syncDao.getPendingPlots(userId).size)
     }
 
@@ -165,7 +165,7 @@ class SyncFailuresAndIntegrityTest {
         syncDao.upsertPlot(remoteMirror)
 
         // 4. Client receives ACK and marks SYNCED
-        syncDao.markPlotsSynced(listOf("plot-ack-loss"))
+        syncDao.markPlotsSynced(userId, listOf("plot-ack-loss"))
 
         // Verify exactly 1 row exists, no duplicates, status is SYNCED
         val result = syncDao.getPlotById("plot-ack-loss")
@@ -329,14 +329,15 @@ class SyncFailuresAndIntegrityTest {
     @Test
     fun testInvariant10_SyncStateReturnsToSyncedOnlyOnConfirmedAck() = runBlocking {
         val syncDao = db.syncDao()
-        val plot = Plot(id = "p-inv-10", name = "Ack Test", area = 1.0, syncStatus = SyncStatus.PENDING)
+        val userId = "user_inv_10"
+        val plot = Plot(id = "p-inv-10", name = "Ack Test", area = 1.0, userId = userId, syncStatus = SyncStatus.PENDING)
         syncDao.upsertPlot(plot)
 
         // Remains PENDING until explicit confirmed mark
         assertEquals(SyncStatus.PENDING, syncDao.getPlotById("p-inv-10")?.syncStatus)
 
         // Confirmed ack from remote
-        syncDao.markPlotsSynced(listOf("p-inv-10"))
+        syncDao.markPlotsSynced(userId, listOf("p-inv-10"))
         assertEquals(SyncStatus.SYNCED, syncDao.getPlotById("p-inv-10")?.syncStatus)
     }
 }

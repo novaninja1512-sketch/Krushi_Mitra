@@ -22,7 +22,8 @@ import kotlinx.coroutines.flow.combine
 
 class FarmRepository(
     private val db: AppDatabase,
-    private val syncEngine: com.example.data.sync.SyncEngine? = null
+    private val syncEngine: com.example.data.sync.SyncEngine? = null,
+    private val authRepository: com.example.data.auth.AuthRepository? = null
 ) {
 
     private val workerDao = db.workerDao()
@@ -33,6 +34,8 @@ class FarmRepository(
     private val yieldRecordDao = db.yieldRecordDao()
     private val dailyTaskDao = db.dailyTaskDao()
     private val expenseDao = db.expenseDao()
+
+    private fun currentUserId(): String? = authRepository?.currentUser?.value?.id
 
     private fun triggerSync() {
         syncEngine?.triggerSync()
@@ -46,6 +49,7 @@ class FarmRepository(
 
     suspend fun insertPlot(plot: Plot) {
         val toInsert = plot.copy(
+            userId = plot.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -55,6 +59,7 @@ class FarmRepository(
 
     suspend fun updatePlot(plot: Plot) {
         val toUpdate = plot.copy(
+            userId = plot.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -105,6 +110,7 @@ class FarmRepository(
 
     suspend fun insertCrop(crop: CropAssignment) {
         val toInsert = crop.copy(
+            userId = crop.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -114,6 +120,7 @@ class FarmRepository(
 
     suspend fun updateCrop(crop: CropAssignment) {
         val toUpdate = crop.copy(
+            userId = crop.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -139,6 +146,7 @@ class FarmRepository(
 
     suspend fun insertWorker(worker: Worker) {
         val toInsert = worker.copy(
+            userId = worker.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -148,6 +156,7 @@ class FarmRepository(
 
     suspend fun updateWorker(worker: Worker) {
         val toUpdate = worker.copy(
+            userId = worker.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -205,6 +214,7 @@ class FarmRepository(
 
     suspend fun recordAttendance(attendance: Attendance) {
         val toRecord = attendance.copy(
+            userId = attendance.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -214,8 +224,10 @@ class FarmRepository(
 
     suspend fun recordAttendanceBatch(list: List<Attendance>) {
         val now = System.currentTimeMillis()
+        val uid = currentUserId()
         val toRecord = list.map {
             it.copy(
+                userId = it.userId ?: uid,
                 updatedAt = now,
                 syncStatus = com.example.data.model.SyncStatus.PENDING
             )
@@ -233,6 +245,7 @@ class FarmRepository(
 
     suspend fun insertTransaction(transaction: WorkerTransaction) {
         val toInsert = transaction.copy(
+            userId = transaction.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -253,6 +266,7 @@ class FarmRepository(
 
     suspend fun insertExpense(expense: Expense) {
         val toInsert = expense.copy(
+            userId = expense.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -262,6 +276,7 @@ class FarmRepository(
 
     suspend fun updateExpense(expense: Expense) {
         val toUpdate = expense.copy(
+            userId = expense.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -283,7 +298,9 @@ class FarmRepository(
 
     suspend fun insertTaskWithWorkers(task: DailyTask, workerIds: List<String>) {
         val now = System.currentTimeMillis()
+        val uid = currentUserId()
         val toInsert = task.copy(
+            userId = task.userId ?: uid,
             updatedAt = now,
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -293,6 +310,7 @@ class FarmRepository(
                 TaskWorkerAssignment(
                     taskId = task.id,
                     workerId = it,
+                    userId = uid,
                     updatedAt = now,
                     syncStatus = com.example.data.model.SyncStatus.PENDING
                 )
@@ -304,7 +322,9 @@ class FarmRepository(
 
     suspend fun updateTaskWithWorkers(task: DailyTask, workerIds: List<String>) {
         val now = System.currentTimeMillis()
+        val uid = currentUserId()
         val toUpdate = task.copy(
+            userId = task.userId ?: uid,
             updatedAt = now,
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -315,6 +335,7 @@ class FarmRepository(
                 TaskWorkerAssignment(
                     taskId = task.id,
                     workerId = it,
+                    userId = uid,
                     updatedAt = now,
                     syncStatus = com.example.data.model.SyncStatus.PENDING
                 )
@@ -344,6 +365,7 @@ class FarmRepository(
 
     suspend fun insertYield(yieldRecord: YieldRecord) {
         val toInsert = yieldRecord.copy(
+            userId = yieldRecord.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -353,6 +375,7 @@ class FarmRepository(
 
     suspend fun updateYield(yieldRecord: YieldRecord) {
         val toUpdate = yieldRecord.copy(
+            userId = yieldRecord.userId ?: currentUserId(),
             updatedAt = System.currentTimeMillis(),
             syncStatus = com.example.data.model.SyncStatus.PENDING
         )
@@ -364,4 +387,15 @@ class FarmRepository(
         yieldRecordDao.deleteYield(id)
         triggerSync()
     }
+
+    // Sync status marking (strictly user-scoped)
+    suspend fun markPlotsSynced(userId: String, ids: List<String>) = db.syncDao().markPlotsSynced(userId, ids)
+    suspend fun markWorkersSynced(userId: String, ids: List<String>) = db.syncDao().markWorkersSynced(userId, ids)
+    suspend fun markAttendanceSynced(userId: String, workerId: String, date: String) = db.syncDao().markAttendanceSynced(userId, workerId, date)
+    suspend fun markWorkerTransactionsSynced(userId: String, ids: List<String>) = db.syncDao().markWorkerTransactionsSynced(userId, ids)
+    suspend fun markCropAssignmentsSynced(userId: String, ids: List<String>) = db.syncDao().markCropAssignmentsSynced(userId, ids)
+    suspend fun markYieldRecordsSynced(userId: String, ids: List<String>) = db.syncDao().markYieldRecordsSynced(userId, ids)
+    suspend fun markDailyTasksSynced(userId: String, ids: List<String>) = db.syncDao().markDailyTasksSynced(userId, ids)
+    suspend fun markTaskWorkerAssignmentsSynced(userId: String, taskId: String, workerId: String) = db.syncDao().markTaskWorkerAssignmentsSynced(userId, taskId, workerId)
+    suspend fun markExpensesSynced(userId: String, ids: List<String>) = db.syncDao().markExpensesSynced(userId, ids)
 }

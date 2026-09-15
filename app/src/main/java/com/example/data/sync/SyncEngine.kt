@@ -76,15 +76,27 @@ class SyncEngine(
 
     companion object {
         private const val KEY_LAST_SYNC_TIME = "last_sync_time"
+        private const val KEY_LAST_SYNC_CHECKPOINT = "last_sync_checkpoint"
         private const val KEY_DEVICE_ESTABLISHED_USER_ID = "device_established_user_id"
+        // 60-second overlap window to protect against clock skew or boundary race conditions
+        private const val OVERLAP_WINDOW_MS = 60_000L
     }
 
-    private fun getLastSyncTime(): Long {
-        return prefs.getLong(KEY_LAST_SYNC_TIME, 0L)
+    fun getLastSyncTime(userId: String? = null): Long {
+        val uid = userId ?: authRepository.currentUser.value?.id ?: return 0L
+        return prefs.getLong("${KEY_LAST_SYNC_TIME}_$uid", 0L)
     }
 
-    private fun setLastSyncTime(time: Long) {
-        prefs.edit().putLong(KEY_LAST_SYNC_TIME, time).apply()
+    private fun setLastSyncTime(userId: String, time: Long) {
+        prefs.edit().putLong("${KEY_LAST_SYNC_TIME}_$userId", time).apply()
+    }
+
+    fun getLastSyncCheckpoint(userId: String): Long {
+        return prefs.getLong("${KEY_LAST_SYNC_CHECKPOINT}_$userId", 0L)
+    }
+
+    fun setLastSyncCheckpoint(userId: String, time: Long) {
+        prefs.edit().putLong("${KEY_LAST_SYNC_CHECKPOINT}_$userId", time).apply()
     }
 
     suspend fun executeFirstLoginMigrationIfNeeded(userId: String): Boolean = withContext(Dispatchers.IO) {
@@ -107,17 +119,38 @@ class SyncEngine(
         }
     }
 
+    private var pendingCountJob: Job? = null
+
     private fun observePendingCount() {
         scope.launch {
-            database.syncDao().getPendingCountFlow().distinctUntilChanged().collect { count ->
-                val currentState = _syncState.value
-                if (currentState !is SyncState.Syncing) {
-                    if (!isOnline()) {
-                        _syncState.value = SyncState.Offline
-                    } else if (count > 0) {
-                        _syncState.value = SyncState.Pending(count)
-                    } else if (currentState !is SyncState.Synced) {
-                        _syncState.value = SyncState.Synced(getLastSyncTime())
+            authRepository.currentUser.collect { user ->
+                pendingCountJob?.cancel()
+                if (user == null) {
+                    val currentState = _syncState.value
+                    if (currentState !is SyncState.Syncing) {
+                        if (!isOnline()) {
+                            _syncState.value = SyncState.Offline
+                        } else {
+                            _syncState.value = SyncState.Synced(0L)
+                        }
+                    }
+                } else {
+                    val userId = user.id
+                    pendingCountJob = scope.launch {
+                        database.syncDao().getPendingCountForUserFlow(userId)
+                            .distinctUntilChanged()
+                            .collect { count ->
+                                val currentState = _syncState.value
+                                if (currentState !is SyncState.Syncing) {
+                                    if (!isOnline()) {
+                                        _syncState.value = SyncState.Offline
+                                    } else if (count > 0) {
+                                        _syncState.value = SyncState.Pending(count)
+                                    } else if (currentState !is SyncState.Synced) {
+                                        _syncState.value = SyncState.Synced(getLastSyncTime(userId))
+                                    }
+                                }
+                            }
                     }
                 }
             }
@@ -166,7 +199,8 @@ class SyncEngine(
 
     fun cancelSync() {
         syncJob?.cancel()
-        _syncState.value = SyncState.Synced(getLastSyncTime())
+        val userId = authRepository.currentUser.value?.id
+        _syncState.value = SyncState.Synced(getLastSyncTime(userId))
     }
 
     suspend fun performSync(): Result<Unit> = withContext(Dispatchers.IO) {
@@ -191,7 +225,7 @@ class SyncEngine(
 
             val client = SupabaseClientProvider.getClient()
             if (client == null) {
-                _syncState.value = SyncState.Synced(getLastSyncTime())
+                _syncState.value = SyncState.Synced(getLastSyncTime(syncSessionUserId))
                 return@withContext Result.success(Unit)
             }
 
@@ -229,31 +263,37 @@ class SyncEngine(
                 uploadExpenses(client, syncDao, syncSessionUserId)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
 
-                // 3. DOWNLOAD / PULL PHASE (Fetch cloud changes strictly for this authenticated user)
+                // 3. DOWNLOAD / INCREMENTAL PULL PHASE (Fetch cloud changes strictly for this authenticated user)
+                val pullStartTime = System.currentTimeMillis()
+                val lastCheckpoint = getLastSyncCheckpoint(syncSessionUserId)
+                val queryCheckpoint = if (lastCheckpoint > 0L) maxOf(0L, lastCheckpoint - OVERLAP_WINDOW_MS) else 0L
+                val sinceIso = if (queryCheckpoint > 0L) TimeUtils.toIso(queryCheckpoint) else null
+
                 // Merged via version-based conflict resolution with full tombstone semantics
-                pullPlots(client, syncDao, syncSessionUserId)
+                pullPlots(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullCrops(client, syncDao, syncSessionUserId)
+                pullCrops(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullYieldRecords(client, syncDao, syncSessionUserId)
+                pullYieldRecords(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullWorkers(client, syncDao, syncSessionUserId)
+                pullWorkers(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullAttendance(client, syncDao, syncSessionUserId)
+                pullAttendance(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullTransactions(client, syncDao, syncSessionUserId)
+                pullTransactions(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullDailyTasks(client, syncDao, syncSessionUserId)
+                pullDailyTasks(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullTaskWorkers(client, syncDao, syncSessionUserId)
+                pullTaskWorkers(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
-                pullExpenses(client, syncDao, syncSessionUserId)
+                pullExpenses(client, syncDao, syncSessionUserId, sinceIso)
                 if (!isSessionActive()) return@withContext Result.success(Unit)
 
-                val now = System.currentTimeMillis()
-                setLastSyncTime(now)
-                _syncState.value = SyncState.Synced(now)
-                Log.d(TAG, "Sync completed successfully at $now for user $syncSessionUserId")
+                // Safely advance checkpoint only after all uploads & pulls succeed without failure
+                setLastSyncCheckpoint(syncSessionUserId, pullStartTime)
+                setLastSyncTime(syncSessionUserId, pullStartTime)
+                _syncState.value = SyncState.Synced(pullStartTime)
+                Log.d(TAG, "Sync completed successfully at $pullStartTime for user $syncSessionUserId")
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed: ${e.message}", e)
@@ -297,7 +337,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("plots").upsert(remoteList)
-        syncDao.markPlotsSynced(pending.map { it.id })
+        syncDao.markPlotsSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadCrops(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -305,7 +345,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("crop_assignments").upsert(remoteList)
-        syncDao.markCropsSynced(pending.map { it.id })
+        syncDao.markCropsSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadYieldRecords(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -313,7 +353,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("yield_records").upsert(remoteList)
-        syncDao.markYieldsSynced(pending.map { it.id })
+        syncDao.markYieldsSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -321,7 +361,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("workers").upsert(remoteList)
-        syncDao.markWorkersSynced(pending.map { it.id })
+        syncDao.markWorkersSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadAttendance(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -330,7 +370,7 @@ class SyncEngine(
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("attendance").upsert(remoteList)
         pending.forEach {
-            syncDao.markAttendanceSynced(it.workerId, it.date)
+            syncDao.markAttendanceSynced(userId, it.workerId, it.date)
         }
     }
 
@@ -339,7 +379,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("worker_transactions").upsert(remoteList)
-        syncDao.markTransactionsSynced(pending.map { it.id })
+        syncDao.markTransactionsSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadDailyTasks(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -347,7 +387,7 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("daily_tasks").upsert(remoteList)
-        syncDao.markTasksSynced(pending.map { it.id })
+        syncDao.markTasksSynced(userId, pending.map { it.id })
     }
 
     private suspend fun uploadTaskWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
@@ -356,7 +396,7 @@ class SyncEngine(
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("task_worker_assignments").upsert(remoteList)
         pending.forEach {
-            syncDao.markTaskWorkerSynced(it.taskId, it.workerId)
+            syncDao.markTaskWorkerSynced(userId, it.taskId, it.workerId)
         }
     }
 
@@ -365,16 +405,24 @@ class SyncEngine(
         if (pending.isEmpty()) return
         val remoteList = pending.map { it.toRemote(userId) }
         client.from("expenses").upsert(remoteList)
-        syncDao.markExpensesSynced(pending.map { it.id })
+        syncDao.markExpensesSynced(userId, pending.map { it.id })
     }
 
-    // --- PULL / DOWNLOAD METHODS (Last-Write-Wins with safe Tombstone handling) ---
+    // --- PULL / DOWNLOAD METHODS (Last-Write-Wins with safe Tombstone handling and Incremental Checkpointing) ---
 
-    private suspend fun pullPlots(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullPlots(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remotePlots = client.from("plots")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<PlotRemote>()
@@ -387,11 +435,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullCrops(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullCrops(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteCrops = client.from("crop_assignments")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<CropAssignmentRemote>()
@@ -404,11 +460,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullYieldRecords(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullYieldRecords(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteYields = client.from("yield_records")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<YieldRecordRemote>()
@@ -421,11 +485,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullWorkers(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteWorkers = client.from("workers")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<WorkerRemote>()
@@ -438,11 +510,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullAttendance(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullAttendance(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteAttendance = client.from("attendance")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<AttendanceRemote>()
@@ -455,11 +535,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullTransactions(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullTransactions(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteTransactions = client.from("worker_transactions")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<WorkerTransactionRemote>()
@@ -472,11 +560,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullDailyTasks(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullDailyTasks(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteTasks = client.from("daily_tasks")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<DailyTaskRemote>()
@@ -489,11 +585,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullTaskWorkers(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullTaskWorkers(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteTaskWorkers = client.from("task_worker_assignments")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<TaskWorkerAssignmentRemote>()
@@ -506,11 +610,19 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pullExpenses(client: io.github.jan.supabase.SupabaseClient, syncDao: com.example.data.dao.SyncDao, userId: String) {
+    private suspend fun pullExpenses(
+        client: io.github.jan.supabase.SupabaseClient,
+        syncDao: com.example.data.dao.SyncDao,
+        userId: String,
+        sinceIso: String? = null
+    ) {
         val remoteExpenses = client.from("expenses")
             .select {
                 filter {
                     eq("user_id", userId)
+                    if (sinceIso != null) {
+                        gte("updated_at", sinceIso)
+                    }
                 }
             }
             .decodeList<ExpenseRemote>()
