@@ -51,6 +51,7 @@ import com.example.R
 import com.example.ui.theme.StatusAbsentRed
 import com.example.ui.theme.StatusHalfDayOrange
 import com.example.ui.theme.StatusPresentGreen
+import com.example.util.DateUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -309,7 +310,7 @@ fun KrushiDatePickerField(
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = selectedDateIso,
+            value = DateUtils.formatForDisplay(selectedDateIso),
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },

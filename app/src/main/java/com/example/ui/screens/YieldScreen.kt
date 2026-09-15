@@ -57,6 +57,7 @@ import com.example.R
 import com.example.data.model.CropWithPlot
 import com.example.data.model.YieldUnits
 import com.example.data.model.YieldWithCrop
+import com.example.ui.components.ConfirmActionDialog
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiDatePickerField
 import com.example.ui.components.KrushiTopBar
@@ -74,6 +75,7 @@ fun YieldScreen(
     val activeCrops by viewModel.activeCrops.collectAsStateWithLifecycle()
     val allCrops by viewModel.cropsWithPlot.collectAsStateWithLifecycle()
     var showRecordDialog by remember { mutableStateOf(false) }
+    var yieldToDelete by remember { mutableStateOf<YieldWithCrop?>(null) }
 
     val totalRevenue = remember(yieldsWithCrop) {
         yieldsWithCrop.sumOf { it.yieldRecord.totalRevenue }
@@ -225,7 +227,7 @@ fun YieldScreen(
                                         )
                                     }
                                     IconButton(
-                                        onClick = { viewModel.deleteYield(yr.id) },
+                                        onClick = { yieldToDelete = item },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -241,6 +243,22 @@ fun YieldScreen(
                 }
             }
         }
+    }
+
+    if (yieldToDelete != null) {
+        val y = yieldToDelete!!
+        val cropName = y.cropWithPlot?.crop?.cropName ?: "Crop"
+        val qtyDisplay = "${DateUtils.formatNumber(y.yieldRecord.quantity)} ${y.yieldRecord.unit}"
+        ConfirmActionDialog(
+            title = "Delete Harvest Record",
+            message = "Are you sure you want to delete this harvest record of $qtyDisplay for $cropName?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteYield(y.yieldRecord.id)
+                yieldToDelete = null
+            },
+            onDismiss = { yieldToDelete = null }
+        )
     }
 
     if (showRecordDialog) {
@@ -269,10 +287,11 @@ fun YieldScreen(
 @Composable
 fun YieldFormDialog(
     crops: List<CropWithPlot>,
+    preselectedCropId: String? = null,
     onDismiss: () -> Unit,
     onSave: (cropId: String, date: String, qty: Double, unit: String, rate: Double, revenue: Double, notes: String) -> Unit
 ) {
-    var selectedCropId by remember { mutableStateOf(crops.firstOrNull()?.crop?.id ?: "") }
+    var selectedCropId by remember { mutableStateOf(preselectedCropId ?: crops.firstOrNull()?.crop?.id ?: "") }
     var date by remember { mutableStateOf(DateUtils.today()) }
     var quantityText by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf<String>(YieldUnits.QUINTAL) }
@@ -409,10 +428,26 @@ fun YieldFormDialog(
                 OutlinedTextField(
                     value = totalRevenueText,
                     onValueChange = { totalRevenueText = it },
-                    label = { Text(stringResource(R.string.yield_total_revenue) + " (₹)") },
+                    label = { Text(stringResource(R.string.yield_total_revenue)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                val calcQty = quantityText.toDoubleOrNull() ?: 0.0
+                val calcRate = rateText.toDoubleOrNull() ?: 0.0
+                if (calcQty > 0.0 && calcRate > 0.0) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Text(
+                            text = "Auto-calculated: ${DateUtils.formatNumber(calcQty)} $unit × ₹${DateUtils.formatNumber(calcRate)} = ₹${DateUtils.formatNumber(calcQty * calcRate)} (tap above to edit if different)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
 
                 KrushiDatePickerField(
                     label = stringResource(R.string.yield_date),

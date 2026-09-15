@@ -1,0 +1,210 @@
+<resources>
+    <string name="app_name">कृषी-मित्र</string>
+    <string name="app_name_marathi">कृषी-मित्र</string>
+    <string name="app_tagline">शेतकऱ्यांसाठी शेती व्यवस्थापन</string>
+    <string name="nav_home">मुख्य पान</string>
+    <string name="nav_plots">शेत / गट</string>
+    <string name="nav_crops">पिके</string>
+    <string name="nav_workers">मजूर</string>
+    <string name="nav_attendance">हजेरी</string>
+    <string name="nav_payments">मजुरी व्यवहार</string>
+    <string name="nav_expenses">खर्च</string>
+    <string name="nav_tasks">कामे</string>
+    <string name="nav_yield">उत्पादन / तोडणी</string>
+
+    <!-- General Actions -->
+    <string name="action_save">जतन करा</string>
+    <string name="action_cancel">रद्द करा</string>
+    <string name="action_delete">हटवा</string>
+    <string name="action_archive">आर्काइव्ह करा</string>
+    <string name="action_restore">पुन्हा सक्रिय करा</string>
+    <string name="action_edit">बदला</string>
+    <string name="action_add">नवीन जोडा</string>
+    <string name="action_view_all">सर्व पहा</string>
+    <string name="action_filter">फिल्टर</string>
+    <string name="action_search">शोधा</string>
+    <string name="action_confirm">नक्की करा</string>
+
+    <!-- Home Dashboard -->
+    <string name="dashboard_title">शेती आढावा</string>
+    <string name="dashboard_attention_title">तातडीचे लक्ष द्या</string>
+    <string name="dashboard_today_tasks">आजची कामे</string>
+    <string name="dashboard_upcoming_harvests">येणारी काढणी / तोडणी</string>
+    <string name="dashboard_recent_expenses">अलीकडील खर्च</string>
+    <string name="dashboard_recent_payments">मजुरांचे अलीकडील पेमेंट</string>
+    <string name="dashboard_active_plots">सक्रिय शेत गट</string>
+    <string name="dashboard_active_crops">उभी पिके</string>
+    <string name="dashboard_workers_count">मजूर</string>
+    <string name="dashboard_no_tasks_today">आजसाठी कोणतेही काम नियोजित नाही</string>
+    <string name="dashboard_no_upcoming_harvests">पुढील ३० दिवसांत कोणतीही तोडणी नाही</string>
+    <string name="dashboard_quick_record">झटपट नोंद</string>
+
+    <!-- Plots -->
+    <string name="plots_title">शेती गट / तुकडे</string>
+    <string name="plot_add">नवीन गट जोडा</string>
+    <string name="plot_edit">गट माहिती बदला</string>
+    <string name="plot_detail">गटाचा तपशील</string>
+    <string name="plot_name">गटाचे / तुकड्याचे नाव</string>
+    <string name="plot_area">क्षेत्रफळ</string>
+    <string name="plot_area_unit">क्षेत्रफळ एकक</string>
+    <string name="plot_soil_type">मातीचा प्रकार</string>
+    <string name="plot_irrigation_type">पाणी व्यवस्था / सिंचन</string>
+    <string name="plot_notes">टीप (पर्यायी)</string>
+    <string name="plot_archived_tag">आर्काइव्ह</string>
+    <string name="plot_active_tag">सक्रिय</string>
+    <string name="plot_show_archived">आर्काइव्ह केलेले गट पहा</string>
+    <string name="plot_empty">कोणतेही शेत गट जोडलेले नाहीत. + वर टॅप करून पहिला गट जोडा.</string>
+    <string name="plot_crops_section">लागवड केलेली पिके</string>
+    <string name="plot_tasks_section">नुकतीच झालेली कामे</string>
+    <string name="plot_expenses_section">या गटावरील खर्च</string>
+    <string name="plot_yield_section">या गटातील उत्पादन</string>
+
+    <!-- Crops -->
+    <string name="crops_title">पीक व्यवस्थापन</string>
+    <string name="crop_add">नवीन पीक जोडा</string>
+    <string name="crop_edit">पीक माहिती बदला</string>
+    <string name="crop_name">पिकाचे नाव</string>
+    <string name="crop_variety">वाण / प्रकार</string>
+    <string name="crop_select_plot">गट निवडा</string>
+    <string name="crop_planting_date">पेरणी / लागवड तारीख</string>
+    <string name="crop_expected_harvest">अपेक्षित काढणी तारीख</string>
+    <string name="crop_status">स्थिती</string>
+    <string name="crop_perennial">बहुवार्षिक पीक (उदा. ऊस, फळबाग)</string>
+    <string name="crop_status_planned">नियोजित</string>
+    <string name="crop_status_active">उभे पीक</string>
+    <string name="crop_status_harvested">काढणी झाली</string>
+    <string name="crop_empty">कोणतेही पीक नोंदवलेले नाही. + वर टॅप करा.</string>
+    <string name="crop_days_to_harvest">अपेक्षित काढणीसाठी %d दिवस शिल्लक</string>
+    <string name="crop_harvest_overdue">काढणीची तारीख उलटून गेली आहे</string>
+    <string name="crop_harvest_today">आज काढणी अपेक्षित आहे</string>
+
+    <!-- Workers -->
+    <string name="workers_title">मजूर व्यवस्थापन</string>
+    <string name="worker_add">नवीन मजूर जोडा</string>
+    <string name="worker_edit">मजुराची माहिती बदला</string>
+    <string name="worker_detail">मजुराचा तपशील</string>
+    <string name="worker_name">पूर्ण नाव</string>
+    <string name="worker_mobile">मोबाईल नंबर (पर्यायी)</string>
+    <string name="worker_daily_wage">दैनिक रोज / मजुरी (₹)</string>
+    <string name="worker_joining_date">कामावर आल्याची तारीख</string>
+    <string name="worker_notes">टीप (पर्यायी)</string>
+    <string name="worker_empty">कोणतेही मजूर जोडलेले नाहीत. + वर टॅप करा.</string>
+    <string name="worker_attendance_summary">हजेरी सारांश</string>
+    <string name="worker_present_days">उपस्थित: %d दिवस</string>
+    <string name="worker_half_days">अर्धा दिवस: %d</string>
+    <string name="worker_absent_days">अनुपस्थित: %d दिवस</string>
+    <string name="worker_total_advance">एकूण उचल (Advance): ₹%.2f</string>
+    <string name="worker_total_salary">एकूण दिलेली मजुरी: ₹%.2f</string>
+    <string name="worker_assigned_tasks">दिलेली कामे</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">रोजंदारी हजेरी</string>
+    <string name="attendance_date">हजेरीची तारीख</string>
+    <string name="attendance_mark_all_present">सर्व हजर करा</string>
+    <string name="attendance_present">हजर</string>
+    <string name="attendance_half_day">अर्धा दिवस</string>
+    <string name="attendance_absent">गैरहजर</string>
+    <string name="attendance_no_workers">हजेरी घेण्यासाठी कोणतेही सक्रिय मजूर नाहीत.</string>
+    <string name="attendance_summary_banner">%1$d हजर • %2$d अर्धा दिवस • %3$d गैरहजर</string>
+    <string name="attendance_saved_auto">हजेरी आपोआप जतन झाली</string>
+
+    <!-- Payments -->
+    <string name="payments_title">मजुरी आणि उचल</string>
+    <string name="payment_record">पेमेंट नोंदवा</string>
+    <string name="payment_type">व्यवहार प्रकार</string>
+    <string name="payment_type_advance">उचल (Advance)</string>
+    <string name="payment_type_salary">मजुरी / पगार</string>
+    <string name="payment_worker">मजूर निवडा</string>
+    <string name="payment_amount">रक्कम (₹)</string>
+    <string name="payment_date">पेमेंट तारीख</string>
+    <string name="payment_notes">कारण / टीप (पर्यायी)</string>
+    <string name="payment_total_advance">एकूण उचल: ₹%.2f</string>
+    <string name="payment_total_salary">एकूण मजुरी: ₹%.2f</string>
+    <string name="payments_empty">अद्याप कोणतेही पेमेंट नोंदवले नाही.</string>
+
+    <!-- Expenses -->
+    <string name="expenses_title">शेती खर्च</string>
+    <string name="expense_record">खर्च नोंदवा</string>
+    <string name="expense_category">खर्च प्रकार</string>
+    <string name="expense_amount">रक्कम (₹)</string>
+    <string name="expense_date">तारीख</string>
+    <string name="expense_description">खर्चाचा तपशील</string>
+    <string name="expense_plot">संबंधित शेत गट (पर्यायी)</string>
+    <string name="expense_no_plot">सर्वसाधारण शेती खर्च</string>
+    <string name="expense_total">एकूण खर्च: ₹%.2f</string>
+    <string name="expenses_empty">अद्याप कोणताही खर्च नोंदवलेला नाही.</string>
+    <string name="expense_all_categories">सर्व प्रकार</string>
+
+    <!-- Tasks -->
+    <string name="tasks_title">शेती कामे</string>
+    <string name="task_add">नवीन काम जोडा</string>
+    <string name="task_edit">काम माहिती बदला</string>
+    <string name="task_type">कामाचा प्रकार</string>
+    <string name="task_description">कामाचा तपशील</string>
+    <string name="task_date">तारीख</string>
+    <string name="task_duration">वेळ (तास)</string>
+    <string name="task_plot">शेत गट (पर्यायी)</string>
+    <string name="task_workers">मजूर नेमा</string>
+    <string name="task_notes">टीप (पर्यायी)</string>
+    <string name="task_status_pending">अपूर्ण</string>
+    <string name="task_status_completed">पूर्ण झाले</string>
+    <string name="tasks_empty">कोणतेही काम नाही. + वर टॅप करा.</string>
+
+    <!-- Yield / Harvest -->
+    <string name="yield_title">पीक उत्पादन व विक्री</string>
+    <string name="yield_record">तोडणी / उत्पादन नोंदवा</string>
+    <string name="yield_crop">पीक निवडा</string>
+    <string name="yield_date">तोडणी / काढणी तारीख</string>
+    <string name="yield_quantity">उत्पादन प्रमाण</string>
+    <string name="yield_unit">एकक</string>
+    <string name="yield_rate">दर प्रती एकक (₹)</string>
+    <string name="yield_revenue">एकूण उत्पन्न (₹)</string>
+    <string name="yield_notes">नोंद / व्यापारी / बाजारपेठ (पर्यायी)</string>
+    <string name="yield_empty">अद्याप उत्पादनाची कोणतीही नोंद नाही.</string>
+    <string name="yield_summary">एकूण उत्पन्न: ₹%.2f</string>
+    <string name="yield_calc_hint">हिशोब: प्रमाण × दर</string>
+
+    <!-- Validation Errors & Misc -->
+    <string name="attendance_status_present">हजर</string>
+    <string name="attendance_status_half_day">अर्धा दिवस</string>
+    <string name="attendance_status_absent">गैरहजर</string>
+    <string name="expense_add">नवीन खर्च</string>
+    <string name="expense_empty">कोणताही खर्च नोंदवलेला नाही.</string>
+    <string name="payment_empty">कोणतेही पेमेंट नोंदवलेले नाही.</string>
+    <string name="payment_select_worker">मजूर निवडा</string>
+    <string name="task_empty">कामे सापडली नाहीत. + वर टॅप करा.</string>
+    <string name="task_duration_hours">कामाचे तास (पर्यायी)</string>
+    <string name="worker_attendance_history">हजेरी इतिहास</string>
+    <string name="worker_payment_history">पेमेंट इतिहास</string>
+    <string name="worker_show_archived">आर्काइव्ह केलेले मजूर दाखवा</string>
+    <string name="yield_total_revenue">एकूण उत्पन्न (₹)</string>
+
+    <string name="err_required_field">ही माहिती भरणे आवश्यक आहे</string>
+    <string name="err_invalid_number">कृपया योग्य संख्या प्रविष्ट करा</string>
+    <string name="err_select_worker">कृपया मजूर निवडा</string>
+    <string name="err_select_plot">कृपया शेत गट निवडा</string>
+    <string name="err_select_crop">कृपया पीक निवडा</string>
+    <string name="err_invalid_date">कृपया योग्य तारीख निवडा</string>
+    <string name="err_generic">काहीतरी चूक झाली. कृपया माहिती तपासून पुन्हा प्रयत्न करा.</string>
+
+    <!-- Cloud Sync & Supabase Auth -->
+    <string name="nav_cloud_sync">खाते आणि बॅकअप</string>
+    <string name="nav_cloud_sync_marathi">क्लाउड आणि खाते</string>
+    <string name="cloud_sync_title">सुरक्षित बॅकअप आणि सिंक</string>
+    <string name="cloud_sync_subtitle">तुमच्या शेताच्या नोंदी सुरक्षित ठेवा आणि कधीही मिळवा</string>
+    <string name="auth_google_button">Google द्वारे सुरक्षित करा</string>
+    <string name="auth_sign_out">खाते बाहेर पडा (Sign Out)</string>
+    <string name="auth_status_signed_in">जोडलेले खाते</string>
+    <string name="auth_status_guest">फोनमधील सुरक्षित साठा (Offline)</string>
+    <string name="sync_status_synced">सर्व नोंदी क्लाउडवर सुरक्षित बॅकअप झाल्या आहेत</string>
+    <string name="sync_status_syncing">क्लाउडवर बॅकअप होत आहे…</string>
+    <string name="sync_status_pending">%d स्थानिक नोंदी बॅकअप होण्याची प्रतीक्षा करत आहेत</string>
+    <string name="sync_status_offline">ऑफलाइन मोड (सर्व नोंदी फोनमध्ये सुरक्षित आहेत)</string>
+    <string name="sync_action_now">आता बॅकअप घ्या</string>
+    <string name="sync_last_time">शेवटचा बॅकअप: %s</string>
+    <string name="sync_never">कधीही नाही</string>
+    <string name="supabase_config_status">क्लाउड बॅकअप कनेक्शन</string>
+    <string name="supabase_connected">क्लाउड सुरक्षितपणे जोडले आहे</string>
+    <string name="supabase_unconfigured">फोनमधील सुरक्षित साठा सक्रिय आहे</string>
+    <string name="first_login_banner">तुमच्या फोनमधील शेती नोंदी सुरक्षित आहेत आणि खात्याशी जोडल्यावर आपोआप बॅकअप होतील.</string>
+</resources>

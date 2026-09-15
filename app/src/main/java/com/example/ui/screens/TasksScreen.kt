@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -67,6 +68,7 @@ import com.example.data.model.Plot
 import com.example.data.model.TaskTypes
 import com.example.data.model.TaskWithDetails
 import com.example.data.model.Worker
+import com.example.ui.components.ConfirmActionDialog
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiDatePickerField
 import com.example.ui.components.KrushiTopBar
@@ -86,6 +88,7 @@ fun TasksScreen(
 
     var selectedFilter by remember { mutableStateOf("ALL") }
     var showAddDialog by remember { mutableStateOf(false) }
+    var taskToDelete by remember { mutableStateOf<TaskWithDetails?>(null) }
 
     val today = DateUtils.today()
     val filteredTasks = remember(tasksWithDetails, selectedFilter) {
@@ -169,12 +172,26 @@ fun TasksScreen(
                         TaskCardItem(
                             taskWithDetails = taskWithDetails,
                             onToggleComplete = { viewModel.toggleTaskCompletion(taskWithDetails.task) },
-                            onDelete = { viewModel.deleteTask(taskWithDetails.task.id) }
+                            onDelete = { taskToDelete = taskWithDetails }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (taskToDelete != null) {
+        val task = taskToDelete!!.task
+        ConfirmActionDialog(
+            title = "Delete Task",
+            message = "Are you sure you want to delete this task: \"${task.description}\"?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteTask(task.id)
+                taskToDelete = null
+            },
+            onDismiss = { taskToDelete = null }
+        )
     }
 
     if (showAddDialog) {
@@ -318,18 +335,19 @@ fun TaskCardItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TaskFormDialog(
     plots: List<Plot>,
     workers: List<Worker>,
+    preselectedPlotId: String? = null,
     onDismiss: () -> Unit,
     onSave: (date: String, plotId: String?, type: String, desc: String, duration: Double, workerIds: List<String>, notes: String) -> Unit
 ) {
     var date by remember { mutableStateOf(DateUtils.today()) }
     var taskType by remember { mutableStateOf<String>(TaskTypes.WEEDING) }
     var description by remember { mutableStateOf("") }
-    var selectedPlotId by remember { mutableStateOf<String?>(plots.firstOrNull()?.id) }
+    var selectedPlotId by remember { mutableStateOf<String?>(preselectedPlotId ?: plots.firstOrNull()?.id) }
     var durationText by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     val selectedWorkerIds = remember { mutableStateListOf<String>() }
@@ -450,35 +468,57 @@ fun TaskFormDialog(
 
                 // Multi-Worker Assignment
                 if (workers.isNotEmpty()) {
-                    Text(
-                        text = "Assign Workers (${selectedWorkerIds.size} selected):",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Column(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Assign Workers (${DateUtils.formatWorkerCount(selectedWorkerIds.size)}):",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            TextButton(
+                                onClick = {
+                                    selectedWorkerIds.clear()
+                                    selectedWorkerIds.addAll(workers.map { it.id })
+                                },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("All", style = MaterialTheme.typography.labelSmall)
+                            }
+                            TextButton(
+                                onClick = { selectedWorkerIds.clear() },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Clear", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         workers.forEach { w ->
                             val isChecked = selectedWorkerIds.contains(w.id)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        if (isChecked) selectedWorkerIds.remove(w.id)
-                                        else selectedWorkerIds.add(w.id)
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { checked ->
-                                        if (checked) selectedWorkerIds.add(w.id)
-                                        else selectedWorkerIds.remove(w.id)
+                            FilterChip(
+                                selected = isChecked,
+                                onClick = {
+                                    if (isChecked) selectedWorkerIds.remove(w.id)
+                                    else selectedWorkerIds.add(w.id)
+                                },
+                                label = { Text(w.name, style = MaterialTheme.typography.bodySmall) },
+                                leadingIcon = if (isChecked) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(w.name, style = MaterialTheme.typography.bodyMedium)
-                            }
+                                } else null
+                            )
                         }
                     }
                 }

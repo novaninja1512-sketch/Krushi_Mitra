@@ -63,6 +63,7 @@ import com.example.data.model.CropAssignment
 import com.example.data.model.CropStatuses
 import com.example.data.model.CropWithPlot
 import com.example.data.model.Plot
+import com.example.ui.components.ConfirmActionDialog
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiDatePickerField
 import com.example.ui.components.KrushiTopBar
@@ -81,6 +82,8 @@ fun CropsScreen(
     var selectedStatusFilter by remember { mutableStateOf<String?>("ALL") }
     var showAddDialog by remember { mutableStateOf(false) }
     var cropToEdit by remember { mutableStateOf<CropAssignment?>(null) }
+    var cropToDelete by remember { mutableStateOf<CropWithPlot?>(null) }
+    var cropForHarvest by remember { mutableStateOf<CropAssignment?>(null) }
 
     val filteredCrops = remember(cropsWithPlot, selectedStatusFilter) {
         if (selectedStatusFilter == "ALL" || selectedStatusFilter == null) {
@@ -162,15 +165,51 @@ fun CropsScreen(
                         CropCardItem(
                             cropWithPlot = cropWithPlot,
                             onEdit = { cropToEdit = cropWithPlot.crop },
+                            onRecordHarvest = { cropForHarvest = cropWithPlot.crop },
                             onStatusChange = { newStatus ->
                                 viewModel.updateCropStatus(cropWithPlot.crop.id, newStatus)
                             },
-                            onDelete = { viewModel.deleteCrop(cropWithPlot.crop.id) }
+                            onDelete = { cropToDelete = cropWithPlot }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (cropToDelete != null) {
+        val c = cropToDelete!!
+        ConfirmActionDialog(
+            title = "Delete Crop",
+            message = "Are you sure you want to delete ${c.crop.cropName} (${c.plot?.name ?: "No Plot"})?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteCrop(c.crop.id)
+                cropToDelete = null
+            },
+            onDismiss = { cropToDelete = null }
+        )
+    }
+
+    if (cropForHarvest != null) {
+        YieldFormDialog(
+            crops = cropsWithPlot,
+            preselectedCropId = cropForHarvest!!.id,
+            onDismiss = { cropForHarvest = null },
+            onSave = { cropId, date, qty, unit, rate, revenue, notes ->
+                viewModel.recordYield(
+                    id = null,
+                    cropAssignmentId = cropId,
+                    date = date,
+                    quantity = qty,
+                    unit = unit,
+                    ratePerUnit = rate,
+                    totalRevenue = revenue,
+                    notes = notes,
+                    onSuccess = { cropForHarvest = null }
+                )
+            }
+        )
     }
 
     if (showAddDialog || cropToEdit != null) {
@@ -205,6 +244,7 @@ fun CropsScreen(
 fun CropCardItem(
     cropWithPlot: CropWithPlot,
     onEdit: () -> Unit,
+    onRecordHarvest: () -> Unit,
     onStatusChange: (String) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -253,6 +293,13 @@ fun CropCardItem(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Record Harvest") },
+                            onClick = {
+                                menuExpanded = false
+                                onRecordHarvest()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Edit Crop") },
                             onClick = {
@@ -372,10 +419,11 @@ fun CropCardItem(
 fun CropFormDialog(
     crop: CropAssignment?,
     plots: List<Plot>,
+    preselectedPlotId: String? = null,
     onDismiss: () -> Unit,
     onSave: (id: String?, plotId: String, cropName: String, variety: String, plantingDate: String, expectedHarvestDate: String, status: String, perennial: Boolean) -> Unit
 ) {
-    var plotId by remember { mutableStateOf(crop?.plotId ?: plots.firstOrNull()?.id ?: "") }
+    var plotId by remember { mutableStateOf(crop?.plotId ?: preselectedPlotId ?: plots.firstOrNull()?.id ?: "") }
     var cropName by remember { mutableStateOf(crop?.cropName ?: "") }
     var variety by remember { mutableStateOf(crop?.variety ?: "") }
     var plantingDate by remember { mutableStateOf(crop?.plantingDate ?: DateUtils.today()) }

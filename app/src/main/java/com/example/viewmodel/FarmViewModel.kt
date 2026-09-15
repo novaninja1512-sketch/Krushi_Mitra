@@ -150,6 +150,9 @@ class FarmViewModel(
         .flatMapLatest { date -> repository.getAttendanceForDate(date) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val todayAttendance: StateFlow<List<Attendance>> = repository.getAttendanceForDate(DateUtils.today())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Payments
     val transactions: StateFlow<List<WorkerTransaction>> = repository.getAllTransactions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

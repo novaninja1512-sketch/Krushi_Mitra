@@ -15,11 +15,29 @@ object DateUtils {
     }
 
     fun formatForDisplay(isoDate: String): String {
+        if (isoDate.isBlank()) return ""
         return try {
             val date = isoFormat.parse(isoDate)
             if (date != null) displayFormat.format(date) else isoDate
         } catch (_: Exception) {
             isoDate
+        }
+    }
+
+    fun formatWorkerCount(count: Int): String {
+        return if (count == 1) "1 worker" else "$count workers"
+    }
+
+    fun formatRecordCount(count: Int, label: String = "record"): String {
+        return if (count == 1) "1 $label" else "$count ${label}s"
+    }
+
+    fun formatDaysRemaining(days: Long): String {
+        return when {
+            days < 0 -> "Overdue by ${kotlin.math.abs(days)} ${if (kotlin.math.abs(days) == 1L) "day" else "days"}"
+            days == 0L -> "Harvest Today"
+            days == 1L -> "Harvest in 1 day"
+            else -> "Harvest in $days days"
         }
     }
 

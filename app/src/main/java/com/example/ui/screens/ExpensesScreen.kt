@@ -58,6 +58,7 @@ import com.example.R
 import com.example.data.model.Expense
 import com.example.data.model.ExpenseCategories
 import com.example.data.model.Plot
+import com.example.ui.components.ConfirmActionDialog
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiDatePickerField
 import com.example.ui.components.KrushiTopBar
@@ -75,6 +76,7 @@ fun ExpensesScreen(
     val plots by viewModel.activePlots.collectAsStateWithLifecycle()
     var selectedCategoryFilter by remember { mutableStateOf<String?>("ALL") }
     var showAddDialog by remember { mutableStateOf(false) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
 
     val plotMap = remember(plots) { plots.associateBy { it.id } }
 
@@ -209,9 +211,9 @@ fun ExpensesScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = exp.description,
+                                        text = exp.description.ifBlank { "${exp.category} Expense" },
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
@@ -246,7 +248,7 @@ fun ExpensesScreen(
                                         )
                                     )
                                     IconButton(
-                                        onClick = { viewModel.deleteExpense(exp.id) },
+                                        onClick = { expenseToDelete = exp },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -262,6 +264,20 @@ fun ExpensesScreen(
                 }
             }
         }
+    }
+
+    if (expenseToDelete != null) {
+        val exp = expenseToDelete!!
+        ConfirmActionDialog(
+            title = "Delete Expense",
+            message = "Are you sure you want to delete this expense of ${DateUtils.formatCurrency(exp.amount)} for '${exp.description.ifBlank { exp.category }}'?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteExpense(exp.id)
+                expenseToDelete = null
+            },
+            onDismiss = { expenseToDelete = null }
+        )
     }
 
     if (showAddDialog) {
@@ -286,6 +302,7 @@ fun ExpensesScreen(
 @Composable
 fun ExpenseFormDialog(
     plots: List<Plot>,
+    preselectedPlotId: String? = null,
     onDismiss: () -> Unit,
     onSave: (category: String, amount: Double, date: String, desc: String, plotId: String?) -> Unit
 ) {
@@ -293,7 +310,7 @@ fun ExpenseFormDialog(
     var amountText by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(DateUtils.today()) }
     var description by remember { mutableStateOf("") }
-    var selectedPlotId by remember { mutableStateOf<String?>(null) }
+    var selectedPlotId by remember { mutableStateOf<String?>(preselectedPlotId) }
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var plotDropdownExpanded by remember { mutableStateOf(false) }

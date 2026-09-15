@@ -6,12 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.example.data.auth.AuthRepository
 import com.example.data.database.AppDatabase
 import com.example.data.repository.FarmRepository
 import com.example.data.sync.SyncEngine
 import com.example.ui.KrushiApp
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.LocaleManager
 import com.example.viewmodel.FarmViewModel
 import com.example.viewmodel.FarmViewModelFactory
 
@@ -32,11 +38,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        LocaleManager.init(this)
         handleAuthIntent(intent)
 
         setContent {
-            MyApplicationTheme {
-                KrushiApp(viewModel = viewModel)
+            val currentLang by LocaleManager.currentLanguage.collectAsState()
+            val localizedContext = remember(currentLang) {
+                LocaleManager.getLocalizedContext(this, currentLang)
+            }
+            CompositionLocalProvider(LocalContext provides localizedContext) {
+                MyApplicationTheme {
+                    KrushiApp(viewModel = viewModel)
+                }
             }
         }
     }

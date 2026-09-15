@@ -55,7 +55,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.LocaleManager
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -105,18 +110,21 @@ fun KrushiApp(viewModel: FarmViewModel) {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val context = LocalContext.current
+    val currentLang by LocaleManager.currentLanguage.collectAsState()
+    val isMarathi = currentLang == "mr"
 
     val drawerItems = listOf(
-        DrawerMenuItem(Screen.Home.route, "Home Dashboard", "मुख्य पृष्ठ", Icons.Default.Home),
-        DrawerMenuItem(Screen.Plots.route, "Farm Plots", "शेत तुकडे", Icons.Default.Landscape),
-        DrawerMenuItem(Screen.Crops.route, "Crops Management", "पीक व्यवस्थापन", Icons.Default.Grass),
-        DrawerMenuItem(Screen.Workers.route, "Worker Management", "मजूर व्यवस्थापन", Icons.Default.People),
-        DrawerMenuItem(Screen.Attendance.route, "Daily Attendance", "दैनंदिन हजेरी", Icons.Default.AssignmentTurnedIn),
-        DrawerMenuItem(Screen.Payments.route, "Worker Payments", "मजुरी व उचल", Icons.Default.MonetizationOn),
-        DrawerMenuItem(Screen.Expenses.route, "Farm Expenses", "शेती खर्च", Icons.Default.ReceiptLong),
-        DrawerMenuItem(Screen.Tasks.route, "Daily Tasks", "रोजची कामे", Icons.Default.DateRange),
-        DrawerMenuItem(Screen.Yield.route, "Harvest & Yield", "उत्पादन व विक्री", Icons.Default.Agriculture),
-        DrawerMenuItem(Screen.CloudSync.route, "Cloud & Account", "क्लाउड आणि खाते", Icons.Default.CloudSync)
+        DrawerMenuItem(Screen.Home.route, stringResource(R.string.nav_home), if (isMarathi) "Home" else "मुख्य पृष्ठ", Icons.Default.Home),
+        DrawerMenuItem(Screen.Plots.route, stringResource(R.string.nav_plots), if (isMarathi) "Plots" else "शेत तुकडे", Icons.Default.Landscape),
+        DrawerMenuItem(Screen.Crops.route, stringResource(R.string.nav_crops), if (isMarathi) "Crops" else "पीक व्यवस्थापन", Icons.Default.Grass),
+        DrawerMenuItem(Screen.Workers.route, stringResource(R.string.nav_workers), if (isMarathi) "Workers" else "मजूर व्यवस्थापन", Icons.Default.People),
+        DrawerMenuItem(Screen.Attendance.route, stringResource(R.string.nav_attendance), if (isMarathi) "Attendance" else "दैनंदिन हजेरी", Icons.Default.AssignmentTurnedIn),
+        DrawerMenuItem(Screen.Payments.route, stringResource(R.string.nav_payments), if (isMarathi) "Payments" else "मजुरी व उचल", Icons.Default.MonetizationOn),
+        DrawerMenuItem(Screen.Expenses.route, stringResource(R.string.nav_expenses), if (isMarathi) "Expenses" else "शेती खर्च", Icons.Default.ReceiptLong),
+        DrawerMenuItem(Screen.Tasks.route, stringResource(R.string.nav_tasks), if (isMarathi) "Tasks" else "रोजची कामे", Icons.Default.DateRange),
+        DrawerMenuItem(Screen.Yield.route, stringResource(R.string.nav_yield), if (isMarathi) "Harvest & Yield" else "उत्पादन व विक्री", Icons.Default.Agriculture),
+        DrawerMenuItem(Screen.CloudSync.route, stringResource(R.string.nav_cloud_sync), if (isMarathi) "Cloud & Account" else "क्लाउड आणि खाते", Icons.Default.CloudSync)
     )
 
     fun navigateTo(route: String) {
@@ -181,8 +189,58 @@ fun KrushiApp(viewModel: FarmViewModel) {
                     }
                 }
 
+                // Language toggle row in Drawer
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "भाषा / Language",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(2.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (currentLang == "en") MaterialTheme.colorScheme.primary else Color.Transparent,
+                            modifier = Modifier.clickable { LocaleManager.setLanguage(context, "en") }
+                        ) {
+                            Text(
+                                text = "English",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = if (currentLang == "en") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (currentLang == "mr") MaterialTheme.colorScheme.primary else Color.Transparent,
+                            modifier = Modifier.clickable { LocaleManager.setLanguage(context, "mr") }
+                        ) {
+                            Text(
+                                text = "मराठी",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = if (currentLang == "mr") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Items list in Drawer
                 drawerItems.forEach { item ->

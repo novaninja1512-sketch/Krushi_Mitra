@@ -68,8 +68,14 @@ fun PlotDetailScreen(
     onNavigateToCrops: () -> Unit
 ) {
     val plotDetails by viewModel.getPlotDetailsFlow(plotId).collectAsStateWithLifecycle()
+    val allPlots by viewModel.activePlots.collectAsStateWithLifecycle()
+    val allWorkers by viewModel.activeWorkers.collectAsStateWithLifecycle()
+
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showAddCropDialog by remember { mutableStateOf(false) }
+    var showAddTaskDialog by remember { mutableStateOf(false) }
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
 
     val plot = plotDetails?.plot
 
@@ -227,7 +233,7 @@ fun PlotDetailScreen(
                             text = stringResource(R.string.plot_crops_section) + " (${plotDetails?.crops?.size ?: 0})",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
-                        OutlinedButton(onClick = onNavigateToCrops) {
+                        OutlinedButton(onClick = { showAddCropDialog = true }) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.size(4.dp))
                             Text(stringResource(R.string.crop_add))
@@ -288,10 +294,21 @@ fun PlotDetailScreen(
                 // Section: Associated Tasks
                 val tasks = plotDetails?.tasks.orEmpty()
                 item {
-                    Text(
-                        text = stringResource(R.string.plot_tasks_section) + " (${tasks.size})",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.plot_tasks_section) + " (${tasks.size})",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        OutlinedButton(onClick = { showAddTaskDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.size(4.dp))
+                            Text(stringResource(R.string.task_add))
+                        }
+                    }
                 }
 
                 if (tasks.isEmpty()) {
@@ -351,10 +368,21 @@ fun PlotDetailScreen(
                 // Section: Associated Expenses
                 val expenses = plotDetails?.expenses.orEmpty()
                 item {
-                    Text(
-                        text = stringResource(R.string.plot_expenses_section) + " (${expenses.size})",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.plot_expenses_section) + " (${expenses.size})",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        OutlinedButton(onClick = { showAddExpenseDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.size(4.dp))
+                            Text(stringResource(R.string.expense_add))
+                        }
+                    }
                 }
 
                 if (expenses.isEmpty()) {
@@ -473,6 +501,68 @@ fun PlotDetailScreen(
                 viewModel.deletePlot(plot.id, onSuccess = onNavigateBack)
             },
             onDismiss = { showDeleteConfirm = false }
+        )
+    }
+
+    if (showAddCropDialog && plot != null) {
+        CropFormDialog(
+            crop = null,
+            plots = allPlots,
+            preselectedPlotId = plot.id,
+            onDismiss = { showAddCropDialog = false },
+            onSave = { id, plotId, cropName, variety, plantingDate, expectedHarvestDate, status, perennial ->
+                viewModel.saveCrop(
+                    id = id,
+                    plotId = plotId,
+                    cropName = cropName,
+                    variety = variety,
+                    plantingDate = plantingDate,
+                    expectedHarvestDate = expectedHarvestDate,
+                    status = status,
+                    perennial = perennial,
+                    onSuccess = { showAddCropDialog = false }
+                )
+            }
+        )
+    }
+
+    if (showAddTaskDialog && plot != null) {
+        TaskFormDialog(
+            plots = allPlots,
+            workers = allWorkers,
+            preselectedPlotId = plot.id,
+            onDismiss = { showAddTaskDialog = false },
+            onSave = { date, plotId, type, desc, duration, workerIds, notes ->
+                viewModel.saveTask(
+                    id = null,
+                    date = date,
+                    plotId = plotId,
+                    taskType = type,
+                    description = desc,
+                    durationHours = duration,
+                    workerIds = workerIds,
+                    notes = notes,
+                    onSuccess = { showAddTaskDialog = false }
+                )
+            }
+        )
+    }
+
+    if (showAddExpenseDialog && plot != null) {
+        ExpenseFormDialog(
+            plots = allPlots,
+            preselectedPlotId = plot.id,
+            onDismiss = { showAddExpenseDialog = false },
+            onSave = { category, amount, date, desc, plotId ->
+                viewModel.recordExpense(
+                    category = category,
+                    amount = amount,
+                    date = date,
+                    description = desc,
+                    plotId = plotId,
+                    onSuccess = { showAddExpenseDialog = false }
+                )
+            }
         )
     }
 }

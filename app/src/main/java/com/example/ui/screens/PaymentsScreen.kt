@@ -56,6 +56,7 @@ import com.example.R
 import com.example.data.model.TransactionTypes
 import com.example.data.model.Worker
 import com.example.data.model.WorkerTransaction
+import com.example.ui.components.ConfirmActionDialog
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.KrushiDatePickerField
 import com.example.ui.components.KrushiTopBar
@@ -75,6 +76,7 @@ fun PaymentsScreen(
     val workers by viewModel.activeWorkers.collectAsStateWithLifecycle()
     var selectedTypeFilter by remember { mutableStateOf<String?>("ALL") }
     var showRecordDialog by remember { mutableStateOf(false) }
+    var transactionToDelete by remember { mutableStateOf<WorkerTransaction?>(null) }
 
     val workerMap = remember(workers) { workers.associateBy { it.id } }
 
@@ -236,7 +238,7 @@ fun PaymentsScreen(
                                         )
                                     )
                                     IconButton(
-                                        onClick = { viewModel.deleteTransaction(tr.id) },
+                                        onClick = { transactionToDelete = tr },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -252,6 +254,21 @@ fun PaymentsScreen(
                 }
             }
         }
+    }
+
+    if (transactionToDelete != null) {
+        val tr = transactionToDelete!!
+        val workerName = workerMap[tr.workerId]?.name ?: "Worker"
+        ConfirmActionDialog(
+            title = "Delete Payment Record",
+            message = "Are you sure you want to delete this ${tr.type} payment of ${DateUtils.formatCurrency(tr.amount)} for $workerName?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteTransaction(tr.id)
+                transactionToDelete = null
+            },
+            onDismiss = { transactionToDelete = null }
+        )
     }
 
     if (showRecordDialog) {
@@ -302,39 +319,37 @@ fun PaymentRecordDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Worker selection (if not fixed)
-                if (preselectedWorkerId == null) {
-                    ExposedDropdownMenuBox(
+                // Worker selection
+                ExposedDropdownMenuBox(
+                    expanded = workerDropdownExpanded,
+                    onExpandedChange = { workerDropdownExpanded = !workerDropdownExpanded }
+                ) {
+                    val selectedWorker = workers.find { it.id == workerId }
+                    OutlinedTextField(
+                        value = selectedWorker?.name ?: "Select Worker",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.payment_select_worker) + " *") },
+                        isError = workerError,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = workerDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .testTag("payment_worker_dropdown")
+                    )
+                    ExposedDropdownMenu(
                         expanded = workerDropdownExpanded,
-                        onExpandedChange = { workerDropdownExpanded = !workerDropdownExpanded }
+                        onDismissRequest = { workerDropdownExpanded = false }
                     ) {
-                        val selectedWorker = workers.find { it.id == workerId }
-                        OutlinedTextField(
-                            value = selectedWorker?.name ?: "Select Worker",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.payment_select_worker) + " *") },
-                            isError = workerError,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = workerDropdownExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                                .testTag("payment_worker_dropdown")
-                        )
-                        ExposedDropdownMenu(
-                            expanded = workerDropdownExpanded,
-                            onDismissRequest = { workerDropdownExpanded = false }
-                        ) {
-                            workers.forEach { w ->
-                                DropdownMenuItem(
-                                    text = { Text(w.name) },
-                                    onClick = {
-                                        workerId = w.id
-                                        workerError = false
-                                        workerDropdownExpanded = false
-                                    }
-                                )
-                            }
+                        workers.forEach { w ->
+                            DropdownMenuItem(
+                                text = { Text(w.name) },
+                                onClick = {
+                                    workerId = w.id
+                                    workerError = false
+                                    workerDropdownExpanded = false
+                                }
+                            )
                         }
                     }
                 }

@@ -73,9 +73,11 @@ fun WorkerDetailScreen(
 ) {
     val context = LocalContext.current
     val workerDetails by viewModel.getWorkerDetailsFlow(workerId).collectAsStateWithLifecycle()
+    val allWorkers by viewModel.activeWorkers.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var transactionToDelete by remember { mutableStateOf<com.example.data.model.WorkerTransaction?>(null) }
 
     val worker = workerDetails?.worker
 
@@ -404,7 +406,7 @@ fun WorkerDetailScreen(
                                         )
                                     )
                                     IconButton(
-                                        onClick = { viewModel.deleteTransaction(tr.id) },
+                                        onClick = { transactionToDelete = tr },
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
@@ -514,9 +516,12 @@ fun WorkerDetailScreen(
     }
 
     if (showPaymentDialog && worker != null) {
+        val selectableWorkers = remember(allWorkers, worker) {
+            if (allWorkers.any { it.id == worker.id }) allWorkers else listOf(worker) + allWorkers
+        }
         PaymentRecordDialog(
             preselectedWorkerId = worker.id,
-            workers = listOf(worker),
+            workers = selectableWorkers,
             onDismiss = { showPaymentDialog = false },
             onSave = { workerId, type, amount, date, notes ->
                 viewModel.recordTransaction(
@@ -528,6 +533,20 @@ fun WorkerDetailScreen(
                     onSuccess = { showPaymentDialog = false }
                 )
             }
+        )
+    }
+
+    if (transactionToDelete != null && worker != null) {
+        val tr = transactionToDelete!!
+        ConfirmActionDialog(
+            title = "Delete Payment Record",
+            message = "Are you sure you want to delete this ${tr.type} payment of ${DateUtils.formatCurrency(tr.amount)} for ${worker.name}?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                viewModel.deleteTransaction(tr.id)
+                transactionToDelete = null
+            },
+            onDismiss = { transactionToDelete = null }
         )
     }
 
