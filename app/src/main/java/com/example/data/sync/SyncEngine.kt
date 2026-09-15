@@ -282,39 +282,13 @@ class SyncEngine(
         localSyncStatus: String,
         remoteDeletedAt: String?,
         remoteUpdatedAt: String?
-    ): Boolean {
-        val remoteEpoch = TimeUtils.toEpoch(remoteUpdatedAt)
-            ?: TimeUtils.toEpoch(remoteDeletedAt)
-            ?: 0L
-        val remoteIsDeleted = !remoteDeletedAt.isNullOrBlank()
-        val localIsDeleted = localDeletedAt != null
-        val localVersion = localUpdatedAt
-        val remoteVersion = remoteEpoch
-
-        if (remoteVersion > localVersion) {
-            // Strictly newer remote version wins (whether active or tombstone)
-            return true
-        } else if (remoteVersion < localVersion) {
-            // Strictly newer local version wins (whether active or tombstone)
-            // Stale remote tombstone does NOT delete newer local record
-            // Stale remote active record does NOT resurrect newer local tombstone
-            return false
-        } else {
-            // Identical version / timestamp tie-breaking
-            if (localSyncStatus == SyncStatus.PENDING) {
-                // Local un-synced user changes take precedence
-                return false
-            }
-            if (remoteIsDeleted && !localIsDeleted) {
-                return true
-            }
-            if (localIsDeleted && !remoteIsDeleted) {
-                return false
-            }
-            // Identical state and timestamp -> idempotent apply
-            return true
-        }
-    }
+    ): Boolean = SyncConflictResolver.shouldApplyRemote(
+        localDeletedAt = localDeletedAt,
+        localUpdatedAt = localUpdatedAt,
+        localSyncStatus = localSyncStatus,
+        remoteDeletedAt = remoteDeletedAt,
+        remoteUpdatedAt = remoteUpdatedAt
+    )
 
     // --- UPLOAD METHODS ---
 

@@ -250,4 +250,140 @@ class RoomMigrationAutomatedTest {
 
         db.close()
     }
+
+    @Test
+    fun testMigration2To3_AdversarialPopulatedDatabase_ExactPaisePreservation() {
+        val callback = object : SupportSQLiteOpenHelper.Callback(2) {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                createV1Schema(db)
+                DatabaseMigrations.MIGRATION_1_2.migrate(db)
+
+                // Populate all 9 entities with realistic data including deleted records, pending sync, user IDs
+                // and test exact rupee amounts: ₹0.01, ₹0.10, ₹0.50, ₹999.99, ₹1,250.50, ₹10,000.00
+                db.execSQL("""
+                    INSERT INTO plots (id, name, area, areaUnit, soilType, irrigationType, notes, archived, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('plot-1', 'Main Plot', 5.0, 'Acre', 'Black', 'Drip', 'Good soil', 0, 'user-999', 1000, 2000, NULL, 'SYNCED')
+                """)
+                db.execSQL("""
+                    INSERT INTO crop_assignments (id, plotId, cropName, variety, plantingDate, expectedHarvestDate, status, perennial, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('crop-1', 'plot-1', 'Cotton', 'Bt', '2026-06-01', '2026-11-01', 'ACTIVE', 0, 'user-999', 1000, 2000, NULL, 'SYNCED')
+                """)
+                // Yield records with rate ₹0.01, ₹0.10, ₹0.50, ₹999.99
+                db.execSQL("""
+                    INSERT INTO yield_records (id, cropAssignmentId, date, quantity, unit, ratePerUnit, totalRevenue, notes, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('yield-1', 'crop-1', '2026-10-01', 100.0, 'kg', 0.01, 1.00, 'Pennies test', 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('yield-2', 'crop-1', '2026-10-02', 10.0, 'kg', 0.10, 1.00, 'Dimes test', 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('yield-3', 'crop-1', '2026-10-03', 2.0, 'kg', 0.50, 1.00, 'Fifty paise test', 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('yield-4', 'crop-1', '2026-10-04', 1.0, 'Quintal', 999.99, 999.99, 'Nine nine nine test', 'user-999', 1000, 2000, 2500, 'PENDING')
+                """)
+                // Workers with wage ₹1,250.50 and ₹10,000.00
+                db.execSQL("""
+                    INSERT INTO workers (id, name, mobileNumber, dailyWageRate, joiningDate, notes, archived, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('worker-1', 'Kisan Leader', '9890001122', 1250.50, '2026-01-01', '', 0, 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('worker-2', 'Master Agronomist', '9890001133', 10000.00, '2026-01-01', '', 0, 'user-999', 1000, 2000, 3000, 'SYNCED')
+                """)
+                // Attendance
+                db.execSQL("""
+                    INSERT INTO attendance (workerId, date, status, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('worker-1', '2026-10-01', 'PRESENT', 'user-999', 1000, 2000, NULL, 'SYNCED')
+                """)
+                // Worker transactions with ₹1,250.50 and ₹0.50
+                db.execSQL("""
+                    INSERT INTO worker_transactions (id, workerId, type, amount, date, notes, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('tx-1', 'worker-1', 'SALARY', 1250.50, '2026-10-02', 'Full day pay', 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('tx-2', 'worker-1', 'ADVANCE', 0.50, '2026-10-03', 'Small advance', 'user-999', 1000, 2000, NULL, 'PENDING')
+                """)
+                // Tasks and Task-Worker assignments
+                db.execSQL("""
+                    INSERT INTO daily_tasks (id, date, plotId, taskType, description, durationHours, isCompleted, notes, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('task-1', '2026-10-01', 'plot-1', 'Weeding', 'Manual weed removal', 4.0, 1, '', 'user-999', 1000, 2000, NULL, 'SYNCED')
+                """)
+                db.execSQL("""
+                    INSERT INTO task_worker_assignments (taskId, workerId, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('task-1', 'worker-1', 'user-999', 1000, 2000, NULL, 'SYNCED')
+                """)
+                // Expenses with ₹999.99 and ₹10,000.00
+                db.execSQL("""
+                    INSERT INTO expenses (id, date, category, amount, description, plotId, userId, createdAt, updatedAt, deletedAt, syncStatus)
+                    VALUES ('exp-1', '2026-10-01', 'Pesticides', 999.99, 'Organic neem oil', 'plot-1', 'user-999', 1000, 2000, NULL, 'SYNCED'),
+                           ('exp-2', '2026-10-02', 'Equipment Repair', 10000.00, 'Borewell pump repair', 'plot-1', 'user-999', 1000, 2000, NULL, 'PENDING')
+                """)
+            }
+
+            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        }
+
+        val helper = createHelper(2, callback)
+        val db = helper.writableDatabase
+
+        // Execute Migration 2 -> 3
+        DatabaseMigrations.MIGRATION_2_3.migrate(db)
+
+        // Verify exact paise conversions:
+        // Worker 1: ₹1,250.50 -> 125050L
+        val cW1 = db.query("SELECT dailyWageRate, syncStatus, userId FROM workers WHERE id = 'worker-1'")
+        assertTrue(cW1.moveToFirst())
+        assertEquals(125050L, cW1.getLong(0))
+        assertEquals("SYNCED", cW1.getString(1))
+        assertEquals("user-999", cW1.getString(2))
+        cW1.close()
+
+        // Worker 2 (deleted record): ₹10,000.00 -> 1000000L
+        val cW2 = db.query("SELECT dailyWageRate, deletedAt FROM workers WHERE id = 'worker-2'")
+        assertTrue(cW2.moveToFirst())
+        assertEquals(1000000L, cW2.getLong(0))
+        assertEquals(3000L, cW2.getLong(1))
+        cW2.close()
+
+        // Yield records: 0.01 -> 1L, 0.10 -> 10L, 0.50 -> 50L, 999.99 -> 99999L
+        val cY1 = db.query("SELECT ratePerUnit, totalRevenue FROM yield_records WHERE id = 'yield-1'")
+        assertTrue(cY1.moveToFirst())
+        assertEquals(1L, cY1.getLong(0))
+        assertEquals(100L, cY1.getLong(1))
+        cY1.close()
+
+        val cY2 = db.query("SELECT ratePerUnit FROM yield_records WHERE id = 'yield-2'")
+        assertTrue(cY2.moveToFirst())
+        assertEquals(10L, cY2.getLong(0))
+        cY2.close()
+
+        val cY3 = db.query("SELECT ratePerUnit FROM yield_records WHERE id = 'yield-3'")
+        assertTrue(cY3.moveToFirst())
+        assertEquals(50L, cY3.getLong(0))
+        cY3.close()
+
+        val cY4 = db.query("SELECT ratePerUnit, totalRevenue, deletedAt, syncStatus FROM yield_records WHERE id = 'yield-4'")
+        assertTrue(cY4.moveToFirst())
+        assertEquals(99999L, cY4.getLong(0))
+        assertEquals(99999L, cY4.getLong(1))
+        assertEquals(2500L, cY4.getLong(2))
+        assertEquals("PENDING", cY4.getString(3))
+        cY4.close()
+
+        // Expenses: ₹999.99 -> 99999L, ₹10,000.00 -> 1000000L
+        val cE1 = db.query("SELECT amount FROM expenses WHERE id = 'exp-1'")
+        assertTrue(cE1.moveToFirst())
+        assertEquals(99999L, cE1.getLong(0))
+        cE1.close()
+
+        val cE2 = db.query("SELECT amount, syncStatus FROM expenses WHERE id = 'exp-2'")
+        assertTrue(cE2.moveToFirst())
+        assertEquals(1000000L, cE2.getLong(0))
+        assertEquals("PENDING", cE2.getString(1))
+        cE2.close()
+
+        // Worker Transactions: ₹1,250.50 -> 125050L, ₹0.50 -> 50L
+        val cT1 = db.query("SELECT amount FROM worker_transactions WHERE id = 'tx-1'")
+        assertTrue(cT1.moveToFirst())
+        assertEquals(125050L, cT1.getLong(0))
+        cT1.close()
+
+        val cT2 = db.query("SELECT amount, syncStatus FROM worker_transactions WHERE id = 'tx-2'")
+        assertTrue(cT2.moveToFirst())
+        assertEquals(50L, cT2.getLong(0))
+        assertEquals("PENDING", cT2.getString(1))
+        cT2.close()
+
+        db.close()
+    }
 }

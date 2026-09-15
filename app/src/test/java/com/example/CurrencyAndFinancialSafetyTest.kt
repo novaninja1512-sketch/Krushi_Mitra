@@ -174,4 +174,46 @@ class CurrencyAndFinancialSafetyTest {
         val cropRevenue = CurrencyUtils.calculateRevenuePaise(12.375, 325060L)
         assertEquals(4022618L, cropRevenue)
     }
+
+    @Test
+    fun testFinancialAdversarialMatrix_ExactPaiseZeroDrift() {
+        // 1. Decimal quantity x rate tests from Section 15:
+        // 0.1 x ₹10 (1000 paise) = 100 paise (₹1.00)
+        assertEquals(100L, CurrencyUtils.calculateRevenuePaise(0.1, 1000L))
+
+        // 0.25 x ₹32 (3200 paise) = 800 paise (₹8.00)
+        assertEquals(800L, CurrencyUtils.calculateRevenuePaise(0.25, 3200L))
+
+        // 1.5 x ₹125.50 (12550 paise) = 18825 paise (₹188.25)
+        assertEquals(18825L, CurrencyUtils.calculateRevenuePaise(1.5, 12550L))
+
+        // 10.75 x ₹37.25 (3725 paise) = 40043.75 -> 40044 paise (₹400.44)
+        assertEquals(40044L, CurrencyUtils.calculateRevenuePaise(10.75, 3725L))
+
+        // 2. Realistic agricultural quantity:
+        // 154.35 quintals at ₹2,150.25 per quintal (215025 paise)
+        // 154.35 * 215025 = 33,189,108.75 -> 33,189,109 paise (₹3,31,891.09)
+        val agRevenue = CurrencyUtils.calculateRevenuePaise(154.35, 215025L)
+        assertEquals(33189109L, agRevenue)
+
+        // 3. Odd daily wage calculation: ₹451 / 2
+        // ₹451 = 45100 paise. Half-day = 22550 paise (₹225.50).
+        val wage451 = 45100L
+        assertEquals(22550L, CurrencyUtils.calculateDailyWagePaise("HALF_DAY", wage451))
+        assertEquals(45100L, CurrencyUtils.calculateDailyWagePaise("PRESENT", wage451))
+
+        // 4. Worker balance exactness:
+        // 5 full days, 3 half days at ₹451:
+        // (5 * 45100) + (3 * 22550) = 225500 + 67650 = 293150 paise (₹2,931.50)
+        // Advances: ₹500 (50000 paise), Salary payout: ₹1,500 (150000 paise)
+        // Balance: 293150 - 50000 - 150000 = 93150 paise (₹931.50)
+        val balance = CurrencyUtils.calculateWorkerBalancePaise(
+            presentCount = 5,
+            halfDayCount = 3,
+            dailyWageRatePaise = wage451,
+            totalAdvancePaise = 50000L,
+            totalSalaryPaise = 150000L
+        )
+        assertEquals(93150L, balance)
+    }
 }
