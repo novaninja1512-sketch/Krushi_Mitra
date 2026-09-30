@@ -72,7 +72,7 @@ fun WorkerDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val workerDetails by viewModel.getWorkerDetailsFlow(workerId).collectAsStateWithLifecycle()
+    val workerDetails by viewModel.getWorkerDetailsFlow(workerId).collectAsStateWithLifecycle(initialValue = null)
     val allWorkers by viewModel.activeWorkers.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
