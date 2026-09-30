@@ -22,6 +22,7 @@ import com.example.data.repository.FarmRepository
 import com.example.util.CurrencyUtils
 import com.example.util.DateUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -204,9 +205,8 @@ class FarmViewModel(
         _showArchivedPlots.value = !_showArchivedPlots.value
     }
 
-    fun getPlotDetailsFlow(plotId: String): StateFlow<PlotDetails?> {
+    fun getPlotDetailsFlow(plotId: String): Flow<PlotDetails?> {
         return repository.getPlotDetails(plotId)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     }
 
     fun savePlot(
@@ -354,9 +354,8 @@ class FarmViewModel(
         _showArchivedWorkers.value = !_showArchivedWorkers.value
     }
 
-    fun getWorkerDetailsFlow(workerId: String): StateFlow<WorkerDetails?> {
+    fun getWorkerDetailsFlow(workerId: String): Flow<WorkerDetails?> {
         return repository.getWorkerDetails(workerId)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     }
 
     fun saveWorker(

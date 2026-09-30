@@ -67,7 +67,7 @@ fun PlotDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCrops: () -> Unit
 ) {
-    val plotDetails by viewModel.getPlotDetailsFlow(plotId).collectAsStateWithLifecycle()
+    val plotDetails by viewModel.getPlotDetailsFlow(plotId).collectAsStateWithLifecycle(initialValue = null)
     val allPlots by viewModel.activePlots.collectAsStateWithLifecycle()
     val allWorkers by viewModel.activeWorkers.collectAsStateWithLifecycle()
 
